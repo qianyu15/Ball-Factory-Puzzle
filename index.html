@@ -1,828 +1,726 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>ボール誘導パズル</title>
-  <style>
-    :root{
-      --bg:#0b1020;
-      --panel:#111831cc;
-      --panel2:#151d3acc;
-      --line:#263156;
-      --text:#e9eeff;
-      --muted:#9aa7d1;
-      --accent:#7dd3fc;
-      --good:#86efac;
-      --bad:#fda4af;
-      --shadow:0 20px 60px rgba(0,0,0,.35);
-      --radius:18px;
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ball Factory Puzzle</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: #111827;
+        font-family: system-ui, sans-serif;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%;margin:0;background:
-      radial-gradient(circle at 20% 20%, #162044 0, transparent 30%),
-      radial-gradient(circle at 80% 10%, #1b2a52 0, transparent 28%),
-      linear-gradient(180deg, #0a1020, #070b16);
-      color:var(--text);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      overflow:hidden;
+
+    canvas {
+        display: block;
+        touch-action: none;
+        cursor: crosshair;
     }
-    .app{
-      height:100%;
-      display:grid;
-      grid-template-rows:auto 1fr;
-      gap:12px;
-      padding:12px;
+
+    .tool {
+        user-select: none;
+        cursor: grab;
     }
-    .topbar{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      align-items:center;
-      padding:12px;
-      border:1px solid rgba(255,255,255,.08);
-      background:linear-gradient(180deg, rgba(21,29,58,.92), rgba(12,18,38,.9));
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      backdrop-filter: blur(12px);
+
+    .tool:active {
+        cursor: grabbing;
     }
-    .title{
-      font-weight:800;
-      letter-spacing:.04em;
-      margin-right:8px;
-      white-space:nowrap;
-    }
-    .sub{
-      color:var(--muted);
-      font-size:12px;
-      margin-right:auto;
-      white-space:nowrap;
-    }
-    .btn{
-      appearance:none;
-      border:none;
-      color:var(--text);
-      background:linear-gradient(180deg, rgba(44,59,109,.95), rgba(27,38,76,.95));
-      border:1px solid rgba(255,255,255,.08);
-      padding:10px 12px;
-      border-radius:14px;
-      cursor:pointer;
-      font-weight:700;
-      font-size:13px;
-      transition:.15s transform,.15s filter,.15s border-color;
-      user-select:none;
-    }
-    .btn:hover{transform:translateY(-1px);filter:brightness(1.06)}
-    .btn.active{
-      border-color:rgba(125,211,252,.9);
-      box-shadow:0 0 0 2px rgba(125,211,252,.15) inset;
-    }
-    .btn.good{background:linear-gradient(180deg, rgba(33,92,58,.95), rgba(19,52,34,.95))}
-    .btn.warn{background:linear-gradient(180deg, rgba(100,49,58,.95), rgba(64,26,33,.95))}
-    .btn.ghost{background:linear-gradient(180deg, rgba(35,41,65,.95), rgba(20,24,38,.95))}
-    .layout{
-      min-height:0;
-      display:grid;
-      grid-template-columns: 1fr 280px;
-      gap:12px;
-    }
-    .stageWrap{
-      position:relative;
-      min-height:0;
-      border-radius:var(--radius);
-      overflow:hidden;
-      border:1px solid rgba(255,255,255,.08);
-      background:
-        radial-gradient(circle at 50% 50%, rgba(80,120,220,.06), transparent 45%),
-        linear-gradient(180deg, rgba(10,15,30,.95), rgba(6,9,18,.95));
-      box-shadow:var(--shadow);
-    }
-    canvas{
-      width:100%;
-      height:100%;
-      display:block;
-      touch-action:none;
-      cursor:crosshair;
-    }
-    .sidebar{
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      min-height:0;
-    }
-    .card{
-      padding:14px;
-      border-radius:var(--radius);
-      border:1px solid rgba(255,255,255,.08);
-      background:linear-gradient(180deg, rgba(21,29,58,.88), rgba(12,18,38,.88));
-      box-shadow:var(--shadow);
-    }
-    .card h3{
-      margin:0 0 8px;
-      font-size:14px;
-    }
-    .card p{
-      margin:0;
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.65;
-    }
-    .legend{
-      display:grid;
-      grid-template-columns:1fr;
-      gap:8px;
-      margin-top:10px;
-      color:var(--muted);
-      font-size:12px;
-    }
-    .chip{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 10px;
-      border-radius:12px;
-      background:rgba(255,255,255,.04);
-      border:1px solid rgba(255,255,255,.06);
-    }
-    .dot{width:10px;height:10px;border-radius:999px;flex:0 0 auto}
-    .overlay{
-      position:absolute;
-      inset:0;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      pointer-events:none;
-      background:radial-gradient(circle at center, rgba(0,0,0,.12), rgba(0,0,0,.45));
-    }
-    .overlay.show{display:flex}
-    .banner{
-      padding:22px 26px;
-      border-radius:24px;
-      background:rgba(10,15,30,.85);
-      border:1px solid rgba(255,255,255,.12);
-      box-shadow:var(--shadow);
-      text-align:center;
-      backdrop-filter: blur(10px);
-    }
-    .banner h1{margin:0 0 6px;font-size:28px}
-    .banner p{margin:0;color:var(--muted)}
-    .footerHint{
-      position:absolute;
-      left:12px;
-      bottom:12px;
-      padding:8px 10px;
-      border-radius:999px;
-      background:rgba(0,0,0,.28);
-      color:rgba(233,238,255,.9);
-      font-size:12px;
-      border:1px solid rgba(255,255,255,.08);
-      pointer-events:none;
-    }
-    @media (max-width: 900px){
-      .layout{grid-template-columns:1fr}
-      .sidebar{display:none}
-    }
-  </style>
+</style>
 </head>
-<body>
-  <div class="app">
-    <div class="topbar">
-      <div class="title">ボール誘導パズル</div>
-      <div class="sub">配置してから再生。ボールをゴールへ運ぶ。人類は物理で遊ぶのが好きですね。</div>
-      <button class="btn active" data-tool="rampUp">↗ 坂</button>
-      <button class="btn" data-tool="rampDown">↘ 坂</button>
-      <button class="btn" data-tool="block">壁</button>
-      <button class="btn" data-tool="bumper">バンパー</button>
-      <button class="btn" data-tool="fan">送風機</button>
-      <button class="btn" data-tool="eraser">消す</button>
-      <button class="btn good" id="runBtn">再生</button>
-      <button class="btn warn" id="resetBtn">ボール再配置</button>
-      <button class="btn ghost" id="clearBtn">全部消す</button>
-      <button class="btn ghost" id="sampleBtn">お手本</button>
+
+<body class="text-white">
+
+<div class="fixed top-0 left-0 right-0 z-10 bg-gray-900/95 border-b border-gray-700">
+    <div class="flex items-center justify-between px-4 py-3">
+        <div>
+            <h1 class="font-bold text-lg">⚙️ Ball Factory Puzzle</h1>
+            <p class="text-xs text-gray-400">
+                物体を配置してボールをゴールへ導け
+            </p>
+        </div>
+
+        <div class="flex gap-2">
+            <button
+                id="startBtn"
+                class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 font-bold">
+                ▶ スタート
+            </button>
+
+            <button
+                id="resetBtn"
+                class="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600">
+                ↻ リセット
+            </button>
+        </div>
     </div>
 
-    <div class="layout">
-      <div class="stageWrap">
-        <canvas id="c"></canvas>
-        <div class="overlay" id="overlay">
-          <div class="banner">
-            <h1>クリア</h1>
-            <p>ボールが目的地に到達しました。</p>
-          </div>
-        </div>
-        <div class="footerHint" id="statusText">停止中: クリックで配置</div>
-      </div>
+    <div class="flex gap-2 px-4 pb-3 overflow-x-auto">
 
-      <div class="sidebar">
-        <div class="card">
-          <h3>遊び方</h3>
-          <p>
-            好きな装置を置いてから「再生」を押します。<br>
-            配置できるのは停止中だけです。<br>
-            ボールがゴールに触れたらクリアです。
-          </p>
-          <div class="legend">
-            <div class="chip"><span class="dot" style="background:#7dd3fc"></span>坂: ボールを転がす</div>
-            <div class="chip"><span class="dot" style="background:#c4b5fd"></span>壁: 進路を塞ぐ</div>
-            <div class="chip"><span class="dot" style="background:#fda4af"></span>バンパー: 弾く</div>
-            <div class="chip"><span class="dot" style="background:#86efac"></span>送風機: 上に押し上げる</div>
-          </div>
-        </div>
-        <div class="card">
-          <h3>メモ</h3>
-          <p>
-            物理が暴れるときは、坂を短めにして、壁で受けて、最後にバンパーで調整すると安定します。
-            なんとも人間らしい雑な精密機械です。
-          </p>
-        </div>
-      </div>
+        <button class="tool bg-blue-700 px-3 py-2 rounded-lg"
+                data-type="ramp">
+            🟦 坂道
+        </button>
+
+        <button class="tool bg-gray-700 px-3 py-2 rounded-lg"
+                data-type="wall">
+            🧱 壁
+        </button>
+
+        <button class="tool bg-yellow-700 px-3 py-2 rounded-lg"
+                data-type="spring">
+            🟡 バネ
+        </button>
+
+        <button class="tool bg-purple-700 px-3 py-2 rounded-lg"
+                data-type="spinner">
+            🌀 回転ゲート
+        </button>
+
+        <button class="tool bg-red-700 px-3 py-2 rounded-lg"
+                data-type="eraser">
+            🗑 削除
+        </button>
+
     </div>
-  </div>
+</div>
 
-  <script>
-    const canvas = document.getElementById('c');
-    const ctx = canvas.getContext('2d');
+<canvas id="game"></canvas>
 
-    const overlay = document.getElementById('overlay');
-    const statusText = document.getElementById('statusText');
-    const runBtn = document.getElementById('runBtn');
-    const resetBtn = document.getElementById('resetBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const sampleBtn = document.getElementById('sampleBtn');
+<div id="message"
+     class="fixed bottom-6 left-1/2 -translate-x-1/2
+            bg-black/80 px-5 py-3 rounded-xl
+            text-center font-bold pointer-events-none">
+    坂道や装置を配置して「スタート」
+</div>
 
-    const toolButtons = [...document.querySelectorAll('[data-tool]')];
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-    let W = 0, H = 0, dpr = 1;
-    let running = false;
-    let cleared = false;
-    let selectedTool = 'rampUp';
-    let objects = [];
-    let trail = [];
+let W, H;
+let running = false;
+let won = false;
 
-    const ball = {
-      x: 90, y: 90,
-      vx: 0, vy: 0,
-      r: 14
-    };
+const gravity = 0.45;
+const friction = 0.985;
 
-    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
-    function dist2(ax, ay, bx, by){
-      const dx = bx - ax, dy = by - ay;
-      return dx*dx + dy*dy;
-    }
-    function hypot(x, y){ return Math.sqrt(x*x + y*y); }
+let selectedTool = "ramp";
 
-    function resize(){
-      const rect = canvas.getBoundingClientRect();
-      dpr = Math.max(1, window.devicePixelRatio || 1);
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(rect.height * dpr);
-      W = rect.width;
-      H = rect.height;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      updateSpawnGoal();
-    }
+let objects = [];
 
-    function updateSpawnGoal(){
-      if (!running && trail.length === 0 && objects.length === 0) {
-        ball.x = Math.max(70, W * 0.10);
-        ball.y = Math.max(70, H * 0.12);
-      }
-      ball.x = clamp(ball.x, ball.r + 6, W - ball.r - 6);
-      ball.y = clamp(ball.y, ball.r + 6, H - ball.r - 6);
-    }
+let ball = {
+    x: 110,
+    y: 180,
+    vx: 0,
+    vy: 0,
+    r: 16
+};
 
-    function resetBall(){
-      const spawn = getSpawn();
-      ball.x = spawn.x;
-      ball.y = spawn.y;
-      ball.vx = 0;
-      ball.vy = 0;
-      trail = [];
-      cleared = false;
-      overlay.classList.remove('show');
-      updateStatus();
-    }
+let goal = {
+    x: 850,
+    y: 550,
+    r: 30
+};
 
-    function getSpawn(){
-      return {
-        x: clamp(Math.round(W * 0.10), 40, W - 40),
-        y: clamp(Math.round(H * 0.12), 40, H - 40)
-      };
-    }
+function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
 
-    function getGoal(){
-      return {
-        x: clamp(Math.round(W * 0.88), 80, W - 40),
-        y: clamp(Math.round(H * 0.82), 80, H - 40),
-        r: 24
-      };
-    }
+    goal.x = W - 100;
+    goal.y = H - 100;
+}
 
-    function updateStatus(){
-      if (cleared) {
-        statusText.textContent = 'クリア';
-      } else if (running) {
-        statusText.textContent = '再生中: ボールが動いています';
-      } else {
-        statusText.textContent = '停止中: クリックで配置';
-      }
-    }
+window.addEventListener("resize", resize);
+resize();
 
-    function setTool(tool){
-      selectedTool = tool;
-      toolButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tool === tool));
-      updateStatus();
-    }
 
-    toolButtons.forEach(btn => {
-      btn.addEventListener('click', () => setTool(btn.dataset.tool));
+// =========================
+// ツール選択
+// =========================
+
+document.querySelectorAll(".tool").forEach(btn => {
+    btn.addEventListener("click", () => {
+        selectedTool = btn.dataset.type;
+
+        document.querySelectorAll(".tool").forEach(b => {
+            b.classList.remove("ring-2", "ring-white");
+        });
+
+        btn.classList.add("ring-2", "ring-white");
     });
+});
 
-    runBtn.addEventListener('click', () => {
-      if (cleared) return;
-      running = !running;
-      runBtn.textContent = running ? '停止' : '再生';
-      runBtn.classList.toggle('good', !running);
-      runBtn.classList.toggle('warn', running);
-      updateStatus();
-    });
 
-    resetBtn.addEventListener('click', resetBall);
+// =========================
+// クリックでオブジェクト配置
+// =========================
 
-    clearBtn.addEventListener('click', () => {
-      objects = [];
-      trail = [];
-      resetBall();
-    });
+canvas.addEventListener("pointerdown", e => {
 
-    sampleBtn.addEventListener('click', () => {
-      objects = [
-        { type:'block', x: 220, y: 150, w: 180, h: 20 },
-        { type:'rampDown', x: 330, y: 250, len: 160, t: 10 },
-        { type:'block', x: 480, y: 320, w: 190, h: 20 },
-        { type:'rampUp', x: 610, y: 420, len: 170, t: 10 },
-        { type:'bumper', x: 730, y: 500, r: 22 },
-        { type:'fan', x: 520, y: 520, w: 110, h: 52, fx: 0, fy: -360 }
-      ];
-      resetBall();
-    });
+    if (running) return;
 
-    function canvasPoint(evt){
-      const rect = canvas.getBoundingClientRect();
-      const p = evt.touches ? evt.touches[0] : evt;
-      return {
-        x: (p.clientX - rect.left),
-        y: (p.clientY - rect.top)
-      };
-    }
+    const rect = canvas.getBoundingClientRect();
 
-    function placeObject(x, y){
-      if (cleared) return;
-      if (selectedTool === 'eraser') {
-        const idx = findNearestObjectIndex(x, y);
-        if (idx !== -1) objects.splice(idx, 1);
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (selectedTool === "eraser") {
+        removeObject(x, y);
         return;
-      }
-
-      if (selectedTool === 'rampUp') {
-        objects.push({ type:'rampUp', x, y, len: 150, t: 10 });
-      } else if (selectedTool === 'rampDown') {
-        objects.push({ type:'rampDown', x, y, len: 150, t: 10 });
-      } else if (selectedTool === 'block') {
-        objects.push({ type:'block', x, y, w: 140, h: 22 });
-      } else if (selectedTool === 'bumper') {
-        objects.push({ type:'bumper', x, y, r: 22 });
-      } else if (selectedTool === 'fan') {
-        objects.push({ type:'fan', x, y, w: 100, h: 48, fx: 0, fy: -420 });
-      }
     }
 
-    function findNearestObjectIndex(x, y){
-      let best = -1;
-      let bestD = Infinity;
-      for (let i = 0; i < objects.length; i++) {
-        const o = objects[i];
-        let d = Infinity;
-        if (o.type === 'block' || o.type === 'fan') {
-          const hw = o.w / 2, hh = o.h / 2;
-          const nx = clamp(x, o.x - hw, o.x + hw);
-          const ny = clamp(y, o.y - hh, o.y + hh);
-          d = Math.sqrt(dist2(x, y, nx, ny));
-        } else if (o.type === 'bumper') {
-          d = Math.abs(Math.sqrt(dist2(x, y, o.x, o.y)) - o.r);
-        } else if (o.type === 'rampUp' || o.type === 'rampDown') {
-          const a = rampEnds(o).a;
-          const b = rampEnds(o).b;
-          d = distancePointToSegment(x, y, a.x, a.y, b.x, b.y);
-        }
-        if (d < bestD) { bestD = d; best = i; }
-      }
-      return bestD < 28 ? best : -1;
+    if (selectedTool === "ramp") {
+        objects.push({
+            type: "ramp",
+            x,
+            y,
+            w: 180,
+            h: 25,
+            angle: -0.35
+        });
     }
 
-    function rampEnds(r){
-      const half = r.len / 2;
-      if (r.type === 'rampUp') {
-        return {
-          a: { x: r.x - half, y: r.y + half * 0.55 },
-          b: { x: r.x + half, y: r.y - half * 0.55 }
-        };
-      }
-      return {
-        a: { x: r.x - half, y: r.y - half * 0.55 },
-        b: { x: r.x + half, y: r.y + half * 0.55 }
-      };
+    if (selectedTool === "wall") {
+        objects.push({
+            type: "wall",
+            x,
+            y,
+            w: 150,
+            h: 25,
+            angle: 0
+        });
     }
 
-    function distancePointToSegment(px, py, ax, ay, bx, by){
-      const dx = bx - ax, dy = by - ay;
-      const len2 = dx*dx + dy*dy || 1;
-      let t = ((px - ax) * dx + (py - ay) * dy) / len2;
-      t = clamp(t, 0, 1);
-      const cx = ax + dx * t;
-      const cy = ay + dy * t;
-      return Math.sqrt(dist2(px, py, cx, cy));
+    if (selectedTool === "spring") {
+        objects.push({
+            type: "spring",
+            x,
+            y,
+            r: 28
+        });
     }
 
-    function closestPointOnSegment(px, py, ax, ay, bx, by){
-      const dx = bx - ax, dy = by - ay;
-      const len2 = dx*dx + dy*dy || 1;
-      let t = ((px - ax) * dx + (py - ay) * dy) / len2;
-      t = clamp(t, 0, 1);
-      return { x: ax + dx * t, y: ay + dy * t, t };
+    if (selectedTool === "spinner") {
+        objects.push({
+            type: "spinner",
+            x,
+            y,
+            r: 60,
+            angle: 0
+        });
     }
+});
 
-    function resolveCircleRect(obj, rect, restitution = 0.35){
-      const hw = rect.w / 2, hh = rect.h / 2;
-      const nearestX = clamp(obj.x, rect.x - hw, rect.x + hw);
-      const nearestY = clamp(obj.y, rect.y - hh, rect.y + hh);
-      let dx = obj.x - nearestX;
-      let dy = obj.y - nearestY;
-      let d2 = dx*dx + dy*dy;
 
-      if (d2 >= obj.r * obj.r) return;
+// =========================
+// 削除
+// =========================
 
-      let nx, ny, dist;
-      if (d2 === 0) {
-        const left = Math.abs(obj.x - (rect.x - hw));
-        const right = Math.abs((rect.x + hw) - obj.x);
-        const top = Math.abs(obj.y - (rect.y - hh));
-        const bottom = Math.abs((rect.y + hh) - obj.y);
-        const m = Math.min(left, right, top, bottom);
-        if (m === left) { nx = -1; ny = 0; dist = 0; obj.x = rect.x - hw - obj.r; }
-        else if (m === right) { nx = 1; ny = 0; dist = 0; obj.x = rect.x + hw + obj.r; }
-        else if (m === top) { nx = 0; ny = -1; dist = 0; obj.y = rect.y - hh - obj.r; }
-        else { nx = 0; ny = 1; dist = 0; obj.y = rect.y + hh + obj.r; }
-      } else {
-        dist = Math.sqrt(d2);
-        nx = dx / dist;
-        ny = dy / dist;
-        const push = obj.r - dist + 0.2;
-        obj.x += nx * push;
-        obj.y += ny * push;
-      }
+function removeObject(x, y) {
 
-      const vn = obj.vx * nx + obj.vy * ny;
-      if (vn < 0) {
-        obj.vx -= (1 + restitution) * vn * nx;
-        obj.vy -= (1 + restitution) * vn * ny;
-        const tx = -ny, ty = nx;
-        const vt = obj.vx * tx + obj.vy * ty;
-        obj.vx -= vt * 0.03 * tx;
-        obj.vy -= vt * 0.03 * ty;
-      }
-    }
+    objects = objects.filter(obj => {
 
-    function resolveCircleCircle(ballObj, cir, restitution = 0.72){
-      const dx = ballObj.x - cir.x;
-      const dy = ballObj.y - cir.y;
-      const d = Math.sqrt(dx*dx + dy*dy);
-      const minD = ballObj.r + cir.r;
-      if (d >= minD) return;
-
-      const nx = d === 0 ? 1 : dx / d;
-      const ny = d === 0 ? 0 : dy / d;
-      const push = minD - d + 0.2;
-      ballObj.x += nx * push;
-      ballObj.y += ny * push;
-
-      const vn = ballObj.vx * nx + ballObj.vy * ny;
-      if (vn < 0) {
-        ballObj.vx -= (1 + restitution) * vn * nx;
-        ballObj.vy -= (1 + restitution) * vn * ny;
-      }
-    }
-
-    function resolveSegment(ballObj, a, b, restitution = 0.42){
-      const cp = closestPointOnSegment(ballObj.x, ballObj.y, a.x, a.y, b.x, b.y);
-      const dx = ballObj.x - cp.x;
-      const dy = ballObj.y - cp.y;
-      const d2 = dx*dx + dy*dy;
-      if (d2 >= ballObj.r * ballObj.r) return;
-
-      const d = Math.sqrt(d2) || 0.0001;
-      const nx = dx / d;
-      const ny = dy / d;
-      const push = ballObj.r - d + 0.25;
-      ballObj.x += nx * push;
-      ballObj.y += ny * push;
-
-      const vn = ballObj.vx * nx + ballObj.vy * ny;
-      if (vn < 0) {
-        ballObj.vx -= (1 + restitution) * vn * nx;
-        ballObj.vy -= (1 + restitution) * vn * ny;
-        const tx = -ny, ty = nx;
-        const vt = ballObj.vx * tx + ballObj.vy * ty;
-        ballObj.vx -= vt * 0.06 * tx;
-        ballObj.vy -= vt * 0.06 * ty;
-      }
-    }
-
-    function update(dt){
-      if (!running || cleared) return;
-
-      const subSteps = 4;
-      const sdt = dt / subSteps;
-      const goal = getGoal();
-
-      for (let s = 0; s < subSteps; s++) {
-        const axBase = 0;
-        const ayBase = 980;
-
-        let ax = axBase;
-        let ay = ayBase;
-
-        for (const o of objects) {
-          if (o.type === 'fan') {
-            if (ball.x >= o.x - o.w/2 && ball.x <= o.x + o.w/2 &&
-                ball.y >= o.y - o.h/2 && ball.y <= o.y + o.h/2) {
-              ax += o.fx;
-              ay += o.fy;
-            }
-          }
+        if (obj.type === "spring" || obj.type === "spinner") {
+            return Math.hypot(x - obj.x, y - obj.y) > obj.r + 20;
         }
 
-        ball.vx += ax * sdt;
-        ball.vy += ay * sdt;
-
-        ball.vx *= 0.999;
-        ball.vy *= 0.9996;
-
-        ball.x += ball.vx * sdt;
-        ball.y += ball.vy * sdt;
-
-        // World bounds
-        const bounce = 0.45;
-        if (ball.x < ball.r + 6) { ball.x = ball.r + 6; ball.vx = Math.abs(ball.vx) * bounce; }
-        if (ball.x > W - ball.r - 6) { ball.x = W - ball.r - 6; ball.vx = -Math.abs(ball.vx) * bounce; }
-        if (ball.y < ball.r + 6) { ball.y = ball.r + 6; ball.vy = Math.abs(ball.vy) * bounce; }
-        if (ball.y > H - ball.r - 6) { ball.y = H - ball.r - 6; ball.vy = -Math.abs(ball.vy) * bounce; }
-
-        // Collisions
-        for (const o of objects) {
-          if (o.type === 'block') {
-            resolveCircleRect(ball, o, 0.28);
-          } else if (o.type === 'bumper') {
-            resolveCircleCircle(ball, o, 1.05);
-            const dx = ball.x - o.x, dy = ball.y - o.y;
-            const d = Math.sqrt(dx*dx + dy*dy) || 1;
-            const boost = 40;
-            ball.vx += (dx / d) * boost * sdt;
-            ball.vy += (dy / d) * boost * sdt;
-          } else if (o.type === 'rampUp' || o.type === 'rampDown') {
-            const e = rampEnds(o);
-            resolveSegment(ball, e.a, e.b, 0.24);
-          }
-        }
-
-        trail.push({ x: ball.x, y: ball.y });
-        if (trail.length > 140) trail.shift();
-
-        if (dist2(ball.x, ball.y, goal.x, goal.y) <= (ball.r + goal.r) * (ball.r + goal.r)) {
-          cleared = true;
-          running = false;
-          runBtn.textContent = '再生';
-          runBtn.classList.add('good');
-          runBtn.classList.remove('warn');
-          overlay.classList.add('show');
-          updateStatus();
-          break;
-        }
-      }
-    }
-
-    function drawGrid(){
-      ctx.save();
-      ctx.globalAlpha = 0.34;
-      ctx.strokeStyle = 'rgba(160,185,255,.08)';
-      ctx.lineWidth = 1;
-      const step = 32;
-      for (let x = 0; x <= W; x += step) {
-        ctx.beginPath();
-        ctx.moveTo(x + 0.5, 0);
-        ctx.lineTo(x + 0.5, H);
-        ctx.stroke();
-      }
-      for (let y = 0; y <= H; y += step) {
-        ctx.beginPath();
-        ctx.moveTo(0, y + 0.5);
-        ctx.lineTo(W, y + 0.5);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    function drawRoundedRect(x, y, w, h, r){
-      const rr = Math.min(r, w/2, h/2);
-      ctx.beginPath();
-      ctx.moveTo(x + rr, y);
-      ctx.arcTo(x + w, y, x + w, y + h, rr);
-      ctx.arcTo(x + w, y + h, x, y + h, rr);
-      ctx.arcTo(x, y + h, x, y, rr);
-      ctx.arcTo(x, y, x + w, y, rr);
-      ctx.closePath();
-    }
-
-    function draw(){
-      ctx.clearRect(0, 0, W, H);
-
-      drawGrid();
-
-      const spawn = getSpawn();
-      const goal = getGoal();
-
-      // Spawn marker
-      ctx.save();
-      ctx.fillStyle = 'rgba(125,211,252,.15)';
-      ctx.strokeStyle = 'rgba(125,211,252,.8)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(spawn.x, spawn.y, 22, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(233,238,255,.92)';
-      ctx.font = '12px system-ui, sans-serif';
-      ctx.fillText('START', spawn.x + 28, spawn.y + 4);
-      ctx.restore();
-
-      // Goal marker
-      ctx.save();
-      ctx.fillStyle = 'rgba(134,239,172,.12)';
-      ctx.strokeStyle = 'rgba(134,239,172,.9)';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(goal.x, goal.y, goal.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(goal.x, goal.y, goal.r - 7, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(134,239,172,.5)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(233,238,255,.92)';
-      ctx.font = 'bold 12px system-ui, sans-serif';
-      ctx.fillText('GOAL', goal.x - 16, goal.y + 40);
-      ctx.restore();
-
-      // Objects
-      for (const o of objects) {
-        if (o.type === 'block') {
-          ctx.save();
-          ctx.fillStyle = 'rgba(159,176,255,.92)';
-          ctx.shadowColor = 'rgba(0,0,0,.25)';
-          ctx.shadowBlur = 10;
-          drawRoundedRect(o.x - o.w/2, o.y - o.h/2, o.w, o.h, 10);
-          ctx.fill();
-          ctx.restore();
-        } else if (o.type === 'bumper') {
-          ctx.save();
-          ctx.shadowColor = 'rgba(253,164,175,.5)';
-          ctx.shadowBlur = 18;
-          ctx.fillStyle = 'rgba(253,164,175,.9)';
-          ctx.beginPath();
-          ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.shadowBlur = 0;
-          ctx.strokeStyle = 'rgba(255,255,255,.65)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(o.x, o.y, o.r - 6, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
-        } else if (o.type === 'fan') {
-          ctx.save();
-          ctx.fillStyle = 'rgba(134,239,172,.18)';
-          ctx.strokeStyle = 'rgba(134,239,172,.8)';
-          ctx.lineWidth = 2;
-          drawRoundedRect(o.x - o.w/2, o.y - o.h/2, o.w, o.h, 12);
-          ctx.fill();
-          ctx.stroke();
-          // Arrow
-          ctx.strokeStyle = 'rgba(134,239,172,1)';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.moveTo(o.x, o.y + 12);
-          ctx.lineTo(o.x, o.y - 12);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(o.x - 8, o.y - 4);
-          ctx.lineTo(o.x, o.y - 14);
-          ctx.lineTo(o.x + 8, o.y - 4);
-          ctx.stroke();
-          ctx.restore();
-        } else if (o.type === 'rampUp' || o.type === 'rampDown') {
-          const e = rampEnds(o);
-          ctx.save();
-          ctx.strokeStyle = 'rgba(125,211,252,.95)';
-          ctx.lineWidth = 12;
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(e.a.x, e.a.y);
-          ctx.lineTo(e.b.x, e.b.y);
-          ctx.stroke();
-
-          ctx.strokeStyle = 'rgba(255,255,255,.28)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(e.a.x, e.a.y);
-          ctx.lineTo(e.b.x, e.b.y);
-          ctx.stroke();
-
-          ctx.fillStyle = 'rgba(125,211,252,.95)';
-          const mx = (e.a.x + e.b.x) / 2;
-          const my = (e.a.y + e.b.y) / 2;
-          ctx.font = '12px system-ui, sans-serif';
-          ctx.fillText(o.type === 'rampUp' ? '↗' : '↘', mx - 4, my - 10);
-          ctx.restore();
-        }
-      }
-
-      // Trail
-      if (trail.length > 1) {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(233,238,255,.22)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(trail[0].x, trail[0].y);
-        for (let i = 1; i < trail.length; i++) ctx.lineTo(trail[i].x, trail[i].y);
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // Ball
-      ctx.save();
-      const g = ctx.createRadialGradient(ball.x - 5, ball.y - 6, 2, ball.x, ball.y, ball.r + 8);
-      g.addColorStop(0, '#ffffff');
-      g.addColorStop(0.25, '#dbeafe');
-      g.addColorStop(1, '#60a5fa');
-      ctx.fillStyle = g;
-      ctx.shadowColor = 'rgba(96,165,250,.5)';
-      ctx.shadowBlur = 16;
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(255,255,255,.72)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, ball.r - 3, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-
-      // Drag hint
-      if (!running && !cleared) {
-        ctx.save();
-        ctx.fillStyle = 'rgba(233,238,255,.85)';
-        ctx.font = '13px system-ui, sans-serif';
-        ctx.fillText('停止中にクリックして配置', 16, 28);
-        ctx.restore();
-      }
-    }
-
-    let last = performance.now();
-    function loop(now){
-      const dt = Math.min(0.033, (now - last) / 1000);
-      last = now;
-      update(dt);
-      draw();
-      requestAnimationFrame(loop);
-    }
-
-    canvas.addEventListener('pointerdown', (e) => {
-      const p = canvasPoint(e);
-      if (!running) {
-        placeObject(p.x, p.y);
-      }
+        return !(
+            x > obj.x - obj.w / 2 &&
+            x < obj.x + obj.w / 2 &&
+            y > obj.y - obj.h / 2 &&
+            y < obj.y + obj.h / 2
+        );
     });
+}
 
-    window.addEventListener('resize', resize);
 
-    // 初期化
-    resize();
-    resetBall();
+// =========================
+// ボタン
+// =========================
+
+document.getElementById("startBtn").onclick = () => {
+
+    if (running) return;
+
+    running = true;
+    won = false;
+
+    ball.x = 110;
+    ball.y = 180;
+    ball.vx = 1;
+    ball.vy = 0;
+
+    document.getElementById("message").textContent =
+        "ボールが動き始めた！";
+};
+
+document.getElementById("resetBtn").onclick = () => {
+
+    running = false;
+    won = false;
+
+    ball.x = 110;
+    ball.y = 180;
+    ball.vx = 0;
+    ball.vy = 0;
+
+    document.getElementById("message").textContent =
+        "坂道や装置を配置して「スタート」";
+};
+
+
+// =========================
+// 物理処理
+// =========================
+
+function update() {
+
+    if (!running || won) return;
+
+    ball.vy += gravity;
+
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    ball.vx *= friction;
+
+    // 画面端
+    if (ball.x - ball.r < 0) {
+        ball.x = ball.r;
+        ball.vx *= -0.7;
+    }
+
+    if (ball.x + ball.r > W) {
+        ball.x = W - ball.r;
+        ball.vx *= -0.7;
+    }
+
+    if (ball.y - ball.r < 70) {
+        ball.y = 70 + ball.r;
+        ball.vy *= -0.7;
+    }
+
+    if (ball.y + ball.r > H) {
+        ball.y = H - ball.r;
+        ball.vy *= -0.65;
+        ball.vx *= 0.9;
+    }
+
+    for (const obj of objects) {
+
+        if (obj.type === "ramp") {
+            collideRamp(obj);
+        }
+
+        if (obj.type === "wall") {
+            collideWall(obj);
+        }
+
+        if (obj.type === "spring") {
+            collideSpring(obj);
+        }
+
+        if (obj.type === "spinner") {
+            collideSpinner(obj);
+        }
+    }
+
+    // ゴール判定
+    const distance = Math.hypot(
+        ball.x - goal.x,
+        ball.y - goal.y
+    );
+
+    if (distance < goal.r - ball.r / 2) {
+
+        won = true;
+
+        document.getElementById("message").textContent =
+            "🎉 ゴール成功！ボールは目的地に到達した！";
+    }
+}
+
+
+// =========================
+// 坂道
+// =========================
+
+function collideRamp(obj) {
+
+    const dx = Math.cos(obj.angle);
+    const dy = Math.sin(obj.angle);
+
+    const px = ball.x - obj.x;
+    const py = ball.y - obj.y;
+
+    const along = px * dx + py * dy;
+    const normal = -px * dy + py * dx;
+
+    if (
+        Math.abs(along) < obj.w / 2 &&
+        normal > -ball.r &&
+        normal < ball.r + obj.h
+    ) {
+
+        const slopeY =
+            obj.y + Math.sin(obj.angle) * along;
+
+        if (ball.y > slopeY - ball.r) {
+
+            ball.y = slopeY - ball.r;
+
+            ball.vy *= -0.15;
+
+            // 坂道方向へ滑る
+            ball.vx += Math.sin(obj.angle) * 0.25;
+            ball.vy += Math.cos(obj.angle) * 0.1;
+        }
+    }
+}
+
+
+// =========================
+// 壁
+// =========================
+
+function collideWall(obj) {
+
+    const left = obj.x - obj.w / 2;
+    const right = obj.x + obj.w / 2;
+    const top = obj.y - obj.h / 2;
+    const bottom = obj.y + obj.h / 2;
+
+    const closestX = Math.max(left, Math.min(ball.x, right));
+    const closestY = Math.max(top, Math.min(ball.y, bottom));
+
+    const dx = ball.x - closestX;
+    const dy = ball.y - closestY;
+
+    const distance = Math.hypot(dx, dy);
+
+    if (distance < ball.r) {
+
+        const nx = distance === 0 ? 0 : dx / distance;
+        const ny = distance === 0 ? -1 : dy / distance;
+
+        ball.x = closestX + nx * ball.r;
+        ball.y = closestY + ny * ball.r;
+
+        const dot = ball.vx * nx + ball.vy * ny;
+
+        ball.vx -= 1.7 * dot * nx;
+        ball.vy -= 1.7 * dot * ny;
+
+        ball.vx *= 0.8;
+        ball.vy *= 0.8;
+    }
+}
+
+
+// =========================
+// バネ
+// =========================
+
+function collideSpring(obj) {
+
+    const dx = ball.x - obj.x;
+    const dy = ball.y - obj.y;
+
+    const distance = Math.hypot(dx, dy);
+
+    if (distance < obj.r + ball.r) {
+
+        const nx = dx / (distance || 1);
+        const ny = dy / (distance || 1);
+
+        ball.x = obj.x + nx * (obj.r + ball.r);
+        ball.y = obj.y + ny * (obj.r + ball.r);
+
+        ball.vx = nx * 12;
+        ball.vy = ny * 12;
+    }
+}
+
+
+// =========================
+// 回転ゲート
+// =========================
+
+function collideSpinner(obj) {
+
+    obj.angle += 0.04;
+
+    for (let i = 0; i < 3; i++) {
+
+        const angle =
+            obj.angle + i * Math.PI * 2 / 3;
+
+        const endX =
+            obj.x + Math.cos(angle) * obj.r;
+
+        const endY =
+            obj.y + Math.sin(angle) * obj.r;
+
+        const dx = ball.x - endX;
+        const dy = ball.y - endY;
+
+        const distance = Math.hypot(dx, dy);
+
+        if (distance < ball.r + 12) {
+
+            const nx = dx / (distance || 1);
+            const ny = dy / (distance || 1);
+
+            ball.vx += nx * 3;
+            ball.vy += ny * 3;
+        }
+    }
+}
+
+
+// =========================
+// 描画
+// =========================
+
+function draw() {
+
+    ctx.clearRect(0, 0, W, H);
+
+    // 背景
+    ctx.fillStyle = "#111827";
+    ctx.fillRect(0, 0, W, H);
+
+    // グリッド
+    ctx.strokeStyle = "rgba(255,255,255,0.04)";
+    ctx.lineWidth = 1;
+
+    for (let x = 0; x < W; x += 40) {
+
+        ctx.beginPath();
+        ctx.moveTo(x, 70);
+        ctx.lineTo(x, H);
+        ctx.stroke();
+    }
+
+    for (let y = 70; y < H; y += 40) {
+
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+    }
+
+    drawGoal();
+
+    for (const obj of objects) {
+        drawObject(obj);
+    }
+
+    drawBall();
+}
+
+
+// =========================
+// ゴール描画
+// =========================
+
+function drawGoal() {
+
+    ctx.beginPath();
+
+    ctx.arc(
+        goal.x,
+        goal.y,
+        goal.r,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle = "rgba(34,197,94,0.25)";
+    ctx.fill();
+
+    ctx.strokeStyle = "#22c55e";
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    ctx.fillStyle = "#86efac";
+    ctx.font = "bold 14px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("GOAL", goal.x, goal.y + 5);
+}
+
+
+// =========================
+// オブジェクト描画
+// =========================
+
+function drawObject(obj) {
+
+    ctx.save();
+
+    ctx.translate(obj.x, obj.y);
+
+    if (obj.type === "ramp") {
+
+        ctx.rotate(obj.angle);
+
+        ctx.fillStyle = "#3b82f6";
+
+        ctx.fillRect(
+            -obj.w / 2,
+            -obj.h / 2,
+            obj.w,
+            obj.h
+        );
+
+        ctx.fillStyle = "rgba(255,255,255,0.3)";
+
+        ctx.fillRect(
+            -obj.w / 2,
+            -obj.h / 2,
+            obj.w,
+            5
+        );
+    }
+
+    if (obj.type === "wall") {
+
+        ctx.fillStyle = "#6b7280";
+
+        ctx.fillRect(
+            -obj.w / 2,
+            -obj.h / 2,
+            obj.w,
+            obj.h
+        );
+
+        ctx.strokeStyle = "#9ca3af";
+        ctx.strokeRect(
+            -obj.w / 2,
+            -obj.h / 2,
+            obj.w,
+            obj.h
+        );
+    }
+
+    if (obj.type === "spring") {
+
+        ctx.beginPath();
+
+        ctx.arc(
+            0,
+            0,
+            obj.r,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle = "#eab308";
+        ctx.fill();
+
+        ctx.strokeStyle = "#fef08a";
+        ctx.lineWidth = 5;
+        ctx.stroke();
+
+        ctx.fillStyle = "#422006";
+        ctx.font = "bold 24px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("↯", 0, 8);
+    }
+
+    if (obj.type === "spinner") {
+
+        ctx.strokeStyle = "#a855f7";
+        ctx.lineWidth = 12;
+        ctx.lineCap = "round";
+
+        for (let i = 0; i < 3; i++) {
+
+            const angle =
+                obj.angle + i * Math.PI * 2 / 3;
+
+            ctx.beginPath();
+
+            ctx.moveTo(0, 0);
+
+            ctx.lineTo(
+                Math.cos(angle) * obj.r,
+                Math.sin(angle) * obj.r
+            );
+
+            ctx.stroke();
+        }
+
+        ctx.beginPath();
+
+        ctx.arc(0, 0, 14, 0, Math.PI * 2);
+
+        ctx.fillStyle = "#d8b4fe";
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+
+// =========================
+// ボール
+// =========================
+
+function drawBall() {
+
+    ctx.beginPath();
+
+    ctx.arc(
+        ball.x,
+        ball.y,
+        ball.r,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle = "#f97316";
+    ctx.fill();
+
+    ctx.strokeStyle = "#fed7aa";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // ハイライト
+    ctx.beginPath();
+
+    ctx.arc(
+        ball.x - 5,
+        ball.y - 5,
+        4,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle = "white";
+    ctx.fill();
+}
+
+
+// =========================
+// メインループ
+// =========================
+
+function loop() {
+
+    update();
+    draw();
+
     requestAnimationFrame(loop);
-  </script>
+}
+
+loop();
+
+</script>
+
 </body>
 </html>
