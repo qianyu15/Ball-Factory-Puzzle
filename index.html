@@ -1,2206 +1,1496 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ball Factory Puzzle</title>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-<script src="https://cdn.tailwindcss.com"></script>
+    <title>Ball Factory Puzzle</title>
 
-<style>
-    body {
-        margin: 0;
-        overflow: hidden;
-        background: #111827;
-        font-family: system-ui, sans-serif;
-    }
+    <script src="https://cdn.tailwindcss.com"></script>
 
-    canvas {
-        display: block;
-        touch-action: none;
-        cursor: crosshair;
-    }
+    <style>
+        * {
+            box-sizing: border-box;
+        }
 
-    .tool {
-        user-select: none;
-        cursor: grab;
-        white-space: nowrap;
-    }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
 
-    .tool:active {
-        cursor: grabbing;
-    }
+        body {
+            background: #111827;
+            font-family: system-ui, sans-serif;
+        }
 
-    .stage-btn {
-        flex-shrink: 0;
-        min-width: 40px;
-    }
-</style>
+        canvas {
+            display: block;
+
+            width: 100%;
+            height: 100%;
+
+            touch-action: none;
+            cursor: crosshair;
+        }
+
+        .tool {
+            user-select: none;
+            cursor: grab;
+        }
+
+        .tool:active {
+            cursor: grabbing;
+        }
+    </style>
 </head>
 
 <body class="text-white">
 
-<!-- =========================
-     ヘッダー
-========================= -->
+    <!-- UI -->
+    <div id="ui"
+        class="fixed top-0 left-0 right-0 z-10 bg-gray-900/95 border-b border-gray-700">
 
-<div
-    id="topBar"
-    class="fixed top-0 left-0 right-0 z-10
-           bg-gray-900/95 border-b border-gray-700">
+        <div class="flex items-center justify-between px-4 py-3">
 
-    <!-- タイトル + 操作 -->
+            <div>
+                <h1 class="font-bold text-lg">
+                    ⚙️ Ball Factory Puzzle
+                </h1>
 
-    <div class="flex items-center justify-between px-4 py-3">
+                <p class="text-xs text-gray-400">
+                    物体を配置してボールをゴールへ導け
+                </p>
+            </div>
 
-        <div class="min-w-0">
+            <div class="flex gap-2">
 
-            <h1 class="font-bold text-lg whitespace-nowrap">
-                ⚙️ Ball Factory Puzzle
-            </h1>
+                <button id="startBtn"
+                    class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 font-bold">
+                    ▶ スタート
+                </button>
 
-            <p class="text-xs text-gray-400 truncate">
-                ステージ
-                <span id="stageNumber">1</span>：
-                物体を配置してボールをゴールへ導け
-            </p>
+                <button id="resetBtn"
+                    class="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600">
+                    ↻ リセット
+                </button>
+
+            </div>
 
         </div>
 
-
-        <div class="flex gap-2 ml-4 flex-shrink-0">
+        <div class="flex gap-2 px-4 pb-3 overflow-x-auto">
 
             <button
-                id="startBtn"
-                class="px-4 py-2 rounded-lg
-                       bg-green-600 hover:bg-green-500
-                       font-bold whitespace-nowrap">
-                ▶ スタート
+                class="tool bg-blue-700 px-3 py-2 rounded-lg ring-2 ring-white"
+                data-type="ramp">
+                🟦 坂道
             </button>
 
             <button
-                id="resetBtn"
-                class="px-4 py-2 rounded-lg
-                       bg-gray-700 hover:bg-gray-600
-                       whitespace-nowrap">
-                ↻ リセット
-            </button>
-
-        </div>
-
-    </div>
-
-
-    <!-- =========================
-         装置選択 + ステージ選択
-    ========================== -->
-
-    <div
-        class="flex items-center gap-2
-               px-4 pb-3
-               overflow-x-auto">
-
-        <!-- 装置 -->
-
-        <button
-            class="tool bg-blue-700 px-3 py-2 rounded-lg
-                   flex-shrink-0"
-            data-type="ramp">
-            🟦 坂道
-        </button>
-
-        <button
-            class="tool bg-gray-700 px-3 py-2 rounded-lg
-                   flex-shrink-0"
-            data-type="wall">
-            🧱 壁
-        </button>
-
-        <button
-            class="tool bg-yellow-700 px-3 py-2 rounded-lg
-                   flex-shrink-0"
-            data-type="spring">
-            🟡 バネ
-        </button>
-
-        <button
-            class="tool bg-purple-700 px-3 py-2 rounded-lg
-                   flex-shrink-0"
-            data-type="spinner">
-            🌀 回転ゲート
-        </button>
-
-        <button
-            class="tool bg-red-700 px-3 py-2 rounded-lg
-                   flex-shrink-0"
-            data-type="eraser">
-            🗑 削除
-        </button>
-
-
-        <!-- 区切り -->
-
-        <div
-            class="h-8 w-px bg-gray-600
-                   mx-1 flex-shrink-0">
-        </div>
-
-
-        <!-- ステージ -->
-
-        <span
-            class="text-sm text-gray-400
-                   flex-shrink-0">
-            STAGE
-        </span>
-
-        <div
-            id="stageButtons"
-            class="flex gap-2">
-        </div>
-
-    </div>
-
-</div>
-
-
-<!-- =========================
-     ゲーム画面
-========================= -->
-
-<canvas id="game"></canvas>
-
-
-<!-- =========================
-     メッセージ
-========================= -->
-
-<div
-    id="message"
-    class="fixed bottom-6 left-1/2
-           -translate-x-1/2
-           bg-black/80
-           px-5 py-3
-           rounded-xl
-           text-center
-           font-bold
-           pointer-events-none">
-
-    ステージ1を攻略して「スタート」
-
-</div>
-
-
-<!-- =========================
-     ステージクリア画面
-========================= -->
-
-<div
-    id="clearPanel"
-    class="hidden fixed inset-0 z-20
-           bg-black/70
-           flex items-center justify-center">
-
-    <div
-        class="bg-gray-900
-               border border-gray-700
-               rounded-2xl
-               p-8
-               text-center
-               shadow-2xl">
-
-        <div class="text-5xl mb-4">
-            🎉
-        </div>
-
-        <h2 class="text-2xl font-bold mb-2">
-            ステージクリア！
-        </h2>
-
-        <p
-            id="clearText"
-            class="text-gray-400 mb-6">
-        </p>
-
-        <div class="flex gap-3 justify-center">
-
-            <button
-                id="retryBtn"
-                class="px-4 py-2
-                       rounded-lg
-                       bg-gray-700
-                       hover:bg-gray-600">
-                ↻ もう一度
+                class="tool bg-gray-700 px-3 py-2 rounded-lg"
+                data-type="wall">
+                🧱 壁
             </button>
 
             <button
-                id="nextStageBtn"
-                class="px-4 py-2
-                       rounded-lg
-                       bg-green-600
-                       hover:bg-green-500
-                       font-bold">
-                次のステージ ▶
+                class="tool bg-yellow-700 px-3 py-2 rounded-lg"
+                data-type="spring">
+                🟡 バネ
+            </button>
+
+            <button
+                class="tool bg-purple-700 px-3 py-2 rounded-lg"
+                data-type="spinner">
+                🌀 回転ゲート
+            </button>
+
+            <button
+                class="tool bg-red-700 px-3 py-2 rounded-lg"
+                data-type="eraser">
+                🗑 削除
             </button>
 
         </div>
 
     </div>
 
-</div>
+    <!-- Canvas -->
+    <canvas id="game"></canvas>
+
+    <!-- Message -->
+    <div id="message"
+        class="fixed bottom-6 left-1/2 -translate-x-1/2
+               bg-black/80 px-5 py-3 rounded-xl
+               text-center font-bold pointer-events-none">
+
+        坂道や装置を配置して「スタート」
+
+    </div>
+
+    <script>
+
+        // =====================================================
+        // Canvas
+        // =====================================================
+
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
+
+        let W = 0;
+        let H = 0;
+
+        let dpr = 1;
 
 
-<script>
+        // =====================================================
+        // Game State
+        // =====================================================
 
-const canvas =
-    document.getElementById("game");
+        let running = false;
+        let won = false;
 
-const ctx =
-    canvas.getContext("2d");
+        let selectedTool = "ramp";
 
-
-// ==================================================
-// 基本設定
-// ==================================================
-
-let W;
-let H;
-
-let running = false;
-let won = false;
-
-let currentStage = 1;
-
-const gravity = 0.45;
-const friction = 0.985;
-
-let selectedTool = "ramp";
-
-let objects = [];
+        let objects = [];
 
 
-// ==================================================
-// ボール
-// ==================================================
+        // =====================================================
+        // Physics
+        // =====================================================
 
-let ball = {
-
-    x: 110,
-    y: 180,
-
-    vx: 0,
-    vy: 0,
-
-    r: 16
-
-};
+        const gravity = 0.45;
+        const friction = 0.985;
 
 
-// ==================================================
-// ゴール
-// ==================================================
+        // =====================================================
+        // Ball
+        // =====================================================
 
-let goal = {
-
-    x: 850,
-    y: 550,
-
-    r: 30
-
-};
-
-
-// ==================================================
-// ステージデータ
-// ==================================================
-
-const stages = [
-
-    {
-
-        name: "はじめの一歩",
-
-        ball: {
+        const ball = {
 
             x: 110,
-            y: 180
+            y: 180,
 
-        },
+            vx: 0,
+            vy: 0,
 
-        goal: {
-
-            x: 0.85,
-            y: 0.8
-
-        },
-
-        objects: [
-
-            {
-
-                type: "ramp",
-
-                x: 350,
-                y: 300,
-
-                w: 220,
-                h: 25,
-
-                angle: 0.2
-
-            },
-
-            {
-
-                type: "wall",
-
-                x: 600,
-                y: 430,
-
-                w: 150,
-                h: 25,
-
-                angle: 0
-
-            }
-
-        ]
-
-    },
-
-
-    {
-
-        name: "壁を越えろ",
-
-        ball: {
-
-            x: 100,
-            y: 160
-
-        },
-
-        goal: {
-
-            x: 0.88,
-            y: 0.78
-
-        },
-
-        objects: [
-
-            {
-
-                type: "wall",
-
-                x: 350,
-                y: 350,
-
-                w: 180,
-                h: 30,
-
-                angle: 0
-
-            },
-
-            {
-
-                type: "ramp",
-
-                x: 500,
-                y: 270,
-
-                w: 180,
-                h: 25,
-
-                angle: -0.45
-
-            },
-
-            {
-
-                type: "wall",
-
-                x: 700,
-                y: 420,
-
-                w: 160,
-
-                h: 30,
-
-                angle: 0
-
-            }
-
-        ]
-
-    },
-
-
-    {
-
-        name: "バネの力",
-
-        ball: {
-
-            x: 100,
-            y: 200
-
-        },
-
-        goal: {
-
-            x: 0.88,
-            y: 0.2
-
-        },
-
-        objects: [
-
-            {
-
-                type: "ramp",
-
-                x: 300,
-                y: 400,
-
-                w: 200,
-                h: 25,
-
-                angle: -0.35
-
-            },
-
-            {
-
-                type: "spring",
-
-                x: 550,
-                y: 350,
-
-                r: 28
-
-            },
-
-            {
-
-                type: "wall",
-
-                x: 720,
-                y: 250,
-
-                w: 180,
-                h: 25,
-
-                angle: 0
-
-            }
-
-        ]
-
-    },
-
-
-    {
-
-        name: "回転ゲート",
-
-        ball: {
-
-            x: 100,
-            y: 180
-
-        },
-
-        goal: {
-
-            x: 0.88,
-            y: 0.75
-
-        },
-
-        objects: [
-
-            {
-
-                type: "ramp",
-
-                x: 300,
-                y: 280,
-
-                w: 180,
-                h: 25,
-
-                angle: 0.3
-
-            },
-
-            {
-
-                type: "spinner",
-
-                x: 500,
-                y: 350,
-
-                r: 70,
-
-                angle: 0
-
-            },
-
-            {
-
-                type: "ramp",
-
-                x: 700,
-                y: 480,
-
-                w: 220,
-                h: 25,
-
-                angle: -0.3
-
-            }
-
-        ]
-
-    },
-
-
-    {
-
-        name: "最終工場",
-
-        ball: {
-
-            x: 100,
-            y: 150
-
-        },
-
-        goal: {
-
-            x: 0.9,
-            y: 0.85
-
-        },
-
-        objects: [
-
-            {
-
-                type: "wall",
-
-                x: 300,
-                y: 300,
-
-                w: 180,
-                h: 30,
-
-                angle: 0
-
-            },
-
-            {
-
-                type: "ramp",
-
-                x: 400,
-                y: 220,
-
-                w: 180,
-                h: 25,
-
-                angle: -0.4
-
-            },
-
-            {
-
-                type: "spinner",
-
-                x: 600,
-                y: 320,
-
-                r: 65,
-
-                angle: 0
-
-            },
-
-            {
-
-                type: "spring",
-
-                x: 750,
-                y: 480,
-
-                r: 28
-
-            },
-
-            {
-
-                type: "ramp",
-
-                x: 850,
-                y: 550,
-
-                w: 180,
-
-                h: 25,
-
-                angle: -0.3
-
-            }
-
-        ]
-
-    }
-
-];
-
-
-// ==================================================
-// 画面サイズ
-// ==================================================
-
-function resize() {
-
-    W =
-        canvas.width =
-        window.innerWidth;
-
-    H =
-        canvas.height =
-        window.innerHeight;
-
-
-    updateGoalPosition();
-
-}
-
-
-window.addEventListener(
-    "resize",
-    resize
-);
-
-
-// ==================================================
-// ゴール位置更新
-// ==================================================
-
-function updateGoalPosition() {
-
-    const stage =
-        stages[currentStage - 1];
-
-
-    goal.x =
-        W * stage.goal.x;
-
-    goal.y =
-        H * stage.goal.y;
-
-}
-
-
-// ==================================================
-// ステージ読み込み
-// ==================================================
-
-function loadStage(stageNumber) {
-
-    currentStage =
-        stageNumber;
-
-
-    const stage =
-        stages[currentStage - 1];
-
-
-    running = false;
-    won = false;
-
-
-    ball.x =
-        stage.ball.x;
-
-    ball.y =
-        stage.ball.y;
-
-
-    ball.vx = 0;
-    ball.vy = 0;
-
-
-    objects =
-        stage.objects.map(obj => ({
-            ...obj
-        }));
-
-
-    updateGoalPosition();
-
-
-    document
-        .getElementById("stageNumber")
-        .textContent =
-        currentStage;
-
-
-    document
-        .getElementById("message")
-        .textContent =
-        `ステージ${currentStage}「${stage.name}」を攻略して「スタート」`;
-
-
-    document
-        .getElementById("clearPanel")
-        .classList.add("hidden");
-
-
-    createStageButtons();
-
-}
-
-
-// ==================================================
-// ステージボタン生成
-// ==================================================
-
-function createStageButtons() {
-
-    const container =
-        document.getElementById(
-            "stageButtons"
-        );
-
-
-    container.innerHTML = "";
-
-
-    stages.forEach((stage, index) => {
-
-        const button =
-            document.createElement(
-                "button"
-            );
-
-
-        button.className =
-            "stage-btn px-3 py-2 rounded-lg font-bold " +
-            (
-                index + 1 === currentStage
-                    ? "bg-green-600"
-                    : "bg-gray-700 hover:bg-gray-600"
-            );
-
-
-        button.textContent =
-            index + 1;
-
-
-        button.onclick = () => {
-
-            loadStage(index + 1);
+            r: 16
 
         };
 
 
-        container.appendChild(button);
+        // =====================================================
+        // Goal
+        // =====================================================
 
-    });
+        const goal = {
 
-}
+            x: 0,
+            y: 0,
 
+            r: 30
 
-// ==================================================
-// ツール選択
-// ==================================================
-
-document
-    .querySelectorAll(".tool")
-    .forEach(button => {
-
-        button.addEventListener(
-            "click",
-            () => {
-
-                selectedTool =
-                    button.dataset.type;
+        };
 
 
-                document
-                    .querySelectorAll(".tool")
-                    .forEach(b => {
+        // =====================================================
+        // Resize
+        // =====================================================
 
-                        b.classList.remove(
-                            "ring-2",
-                            "ring-white"
-                        );
+        function resize() {
 
-                    });
+            const rect =
+                canvas.getBoundingClientRect();
 
+            W = rect.width;
+            H = rect.height;
 
-                button.classList.add(
-                    "ring-2",
-                    "ring-white"
+            dpr =
+                Math.max(
+                    1,
+                    Math.min(
+                        window.devicePixelRatio || 1,
+                        2
+                    )
                 );
 
-            }
-        );
-
-    });
-
-
-// ==================================================
-// オブジェクト配置
-// ==================================================
-
-canvas.addEventListener(
-    "pointerdown",
-    event => {
-
-        if (running) return;
-
-
-        const rect =
-            canvas.getBoundingClientRect();
-
-
-        const x =
-            event.clientX -
-            rect.left;
-
-
-        const y =
-            event.clientY -
-            rect.top;
-
-
-        if (
-            selectedTool ===
-            "eraser"
-        ) {
-
-            removeObject(
-                x,
-                y
-            );
-
-            return;
-
-        }
-
-
-        if (
-            selectedTool ===
-            "ramp"
-        ) {
-
-            objects.push({
-
-                type: "ramp",
-
-                x,
-                y,
-
-                w: 180,
-                h: 25,
-
-                angle: -0.35
-
-            });
-
-        }
-
-
-        if (
-            selectedTool ===
-            "wall"
-        ) {
-
-            objects.push({
-
-                type: "wall",
-
-                x,
-                y,
-
-                w: 150,
-                h: 25,
-
-                angle: 0
-
-            });
-
-        }
-
-
-        if (
-            selectedTool ===
-            "spring"
-        ) {
-
-            objects.push({
-
-                type: "spring",
-
-                x,
-                y,
-
-                r: 28
-
-            });
-
-        }
-
-
-        if (
-            selectedTool ===
-            "spinner"
-        ) {
-
-            objects.push({
-
-                type: "spinner",
-
-                x,
-                y,
-
-                r: 60,
-
-                angle: 0
-
-            });
-
-        }
-
-    }
-);
-
-
-// ==================================================
-// オブジェクト削除
-// ==================================================
-
-function removeObject(
-    x,
-    y
-) {
-
-    objects =
-        objects.filter(obj => {
-
-            if (
-
-                obj.type === "spring" ||
-                obj.type === "spinner"
-
-            ) {
-
-                return Math.hypot(
-
-                    x - obj.x,
-                    y - obj.y
-
-                ) >
-                obj.r + 20;
-
-            }
-
-
-            return !(
-                x >
-                obj.x - obj.w / 2 &&
-
-                x <
-                obj.x + obj.w / 2 &&
-
-                y >
-                obj.y - obj.h / 2 &&
-
-                y <
-                obj.y + obj.h / 2
-            );
-
-        });
-
-}
-
-
-// ==================================================
-// スタート
-// ==================================================
-
-document
-    .getElementById("startBtn")
-    .onclick = () => {
-
-        if (running) return;
-
-
-        running = true;
-        won = false;
-
-
-        ball.vx = 1;
-        ball.vy = 0;
-
-
-        document
-            .getElementById("message")
-            .textContent =
-            "ボールが動き始めた！";
-
-    };
-
-
-// ==================================================
-// リセット
-// ==================================================
-
-document
-    .getElementById("resetBtn")
-    .onclick = () => {
-
-        loadStage(
-            currentStage
-        );
-
-    };
-
-
-// ==================================================
-// リトライ
-// ==================================================
-
-document
-    .getElementById("retryBtn")
-    .onclick = () => {
-
-        loadStage(
-            currentStage
-        );
-
-    };
-
-
-// ==================================================
-// 次のステージ
-// ==================================================
-
-document
-    .getElementById("nextStageBtn")
-    .onclick = () => {
-
-        if (
-            currentStage <
-            stages.length
-        ) {
-
-            loadStage(
-                currentStage + 1
-            );
-
-        }
-
-    };
-
-
-// ==================================================
-// 物理処理
-// ==================================================
-
-function update() {
-
-    if (
-        !running ||
-        won
-    ) return;
-
-
-    ball.vy +=
-        gravity;
-
-
-    ball.x +=
-        ball.vx;
-
-    ball.y +=
-        ball.vy;
-
-
-    ball.vx *=
-        friction;
-
-
-    // 左右の壁
-
-    if (
-        ball.x - ball.r < 0
-    ) {
-
-        ball.x =
-            ball.r;
-
-        ball.vx *=
-            -0.7;
-
-    }
-
-
-    if (
-        ball.x + ball.r > W
-    ) {
-
-        ball.x =
-            W - ball.r;
-
-        ball.vx *=
-            -0.7;
-
-    }
-
-
-    // 上の壁
-
-    if (
-        ball.y - ball.r < 70
-    ) {
-
-        ball.y =
-            70 + ball.r;
-
-        ball.vy *=
-            -0.7;
-
-    }
-
-
-    // 下の壁
-
-    if (
-        ball.y + ball.r > H
-    ) {
-
-        ball.y =
-            H - ball.r;
-
-        ball.vy *=
-            -0.65;
-
-        ball.vx *=
-            0.9;
-
-    }
-
-
-    // オブジェクト衝突
-
-    for (
-        const obj of objects
-    ) {
-
-        if (
-            obj.type === "ramp"
-        ) {
-
-            collideRamp(
-                obj
-            );
-
-        }
-
-
-        if (
-            obj.type === "wall"
-        ) {
-
-            collideWall(
-                obj
-            );
-
-        }
-
-
-        if (
-            obj.type === "spring"
-        ) {
-
-            collideSpring(
-                obj
-            );
-
-        }
-
-
-        if (
-            obj.type === "spinner"
-        ) {
-
-            collideSpinner(
-                obj
-            );
-
-        }
-
-    }
-
-
-    // ゴール判定
-
-    const distance =
-        Math.hypot(
-
-            ball.x - goal.x,
-            ball.y - goal.y
-
-        );
-
-
-    if (
-        distance <
-        goal.r - ball.r / 2
-    ) {
-
-        won = true;
-        running = false;
-
-
-        document
-            .getElementById("message")
-            .textContent =
-            "🎉 ステージクリア！";
-
-
-        document
-            .getElementById("clearText")
-            .textContent =
-            `ステージ${currentStage}をクリアしました`;
-
-
-        document
-            .getElementById("clearPanel")
-            .classList.remove(
-                "hidden"
-            );
-
-
-        if (
-            currentStage >=
-            stages.length
-        ) {
-
-            document
-                .getElementById("nextStageBtn")
-                .textContent =
-                "全ステージクリア！";
-
-        }
-
-    }
-
-}
-
-
-// ==================================================
-// 坂道
-// ==================================================
-
-function collideRamp(obj) {
-
-    const dx =
-        Math.cos(
-            obj.angle
-        );
-
-
-    const dy =
-        Math.sin(
-            obj.angle
-        );
-
-
-    const px =
-        ball.x -
-        obj.x;
-
-
-    const py =
-        ball.y -
-        obj.y;
-
-
-    const along =
-        px * dx +
-        py * dy;
-
-
-    const normal =
-        -px * dy +
-        py * dx;
-
-
-    if (
-
-        Math.abs(
-            along
-        ) <
-        obj.w / 2 &&
-
-        normal >
-        -ball.r &&
-
-        normal <
-        ball.r +
-        obj.h
-
-    ) {
-
-        const slopeY =
-            obj.y +
-            Math.sin(
-                obj.angle
-            ) *
-            along;
-
-
-        if (
-            ball.y >
-            slopeY -
-            ball.r
-        ) {
-
-            ball.y =
-                slopeY -
-                ball.r;
-
-
-            ball.vy *=
-                -0.15;
-
-
-            ball.vx +=
-                Math.sin(
-                    obj.angle
-                ) *
-                0.25;
-
-
-            ball.vy +=
-                Math.cos(
-                    obj.angle
-                ) *
-                0.1;
-
-        }
-
-    }
-
-}
-
-
-// ==================================================
-// 壁
-// ==================================================
-
-function collideWall(obj) {
-
-    const left =
-        obj.x -
-        obj.w / 2;
-
-
-    const right =
-        obj.x +
-        obj.w / 2;
-
-
-    const top =
-        obj.y -
-        obj.h / 2;
-
-
-    const bottom =
-        obj.y +
-        obj.h / 2;
-
-
-    const closestX =
-        Math.max(
-
-            left,
-
-            Math.min(
-                ball.x,
-                right
-            )
-
-        );
-
-
-    const closestY =
-        Math.max(
-
-            top,
-
-            Math.min(
-                ball.y,
-                bottom
-            )
-
-        );
-
-
-    const dx =
-        ball.x -
-        closestX;
-
-
-    const dy =
-        ball.y -
-        closestY;
-
-
-    const distance =
-        Math.hypot(
-            dx,
-            dy
-        );
-
-
-    if (
-        distance <
-        ball.r
-    ) {
-
-        const nx =
-            distance === 0
-                ? 0
-                : dx /
-                  distance;
-
-
-        const ny =
-            distance === 0
-                ? -1
-                : dy /
-                  distance;
-
-
-        ball.x =
-            closestX +
-            nx *
-            ball.r;
-
-
-        ball.y =
-            closestY +
-            ny *
-            ball.r;
-
-
-        const dot =
-            ball.vx *
-            nx +
-
-            ball.vy *
-            ny;
-
-
-        ball.vx -=
-            1.7 *
-            dot *
-            nx;
-
-
-        ball.vy -=
-            1.7 *
-            dot *
-            ny;
-
-
-        ball.vx *=
-            0.8;
-
-
-        ball.vy *=
-            0.8;
-
-    }
-
-}
-
-
-// ==================================================
-// バネ
-// ==================================================
-
-function collideSpring(obj) {
-
-    const dx =
-        ball.x -
-        obj.x;
-
-
-    const dy =
-        ball.y -
-        obj.y;
-
-
-    const distance =
-        Math.hypot(
-            dx,
-            dy
-        );
-
-
-    if (
-        distance <
-        obj.r +
-        ball.r
-    ) {
-
-        const nx =
-            dx /
-            (distance || 1);
-
-
-        const ny =
-            dy /
-            (distance || 1);
-
-
-        ball.x =
-            obj.x +
-            nx *
-            (
-                obj.r +
-                ball.r
-            );
-
-
-        ball.y =
-            obj.y +
-            ny *
-            (
-                obj.r +
-                ball.r
-            );
-
-
-        ball.vx =
-            nx *
-            12;
-
-
-        ball.vy =
-            ny *
-            12;
-
-    }
-
-}
-
-
-// ==================================================
-// 回転ゲート
-// ==================================================
-
-function collideSpinner(obj) {
-
-    obj.angle +=
-        0.04;
-
-
-    for (
-        let i = 0;
-        i < 3;
-        i++
-    ) {
-
-        const angle =
-            obj.angle +
-            i *
-            Math.PI *
-            2 /
-            3;
-
-
-        const endX =
-            obj.x +
-            Math.cos(
-                angle
-            ) *
-            obj.r;
-
-
-        const endY =
-            obj.y +
-            Math.sin(
-                angle
-            ) *
-            obj.r;
-
-
-        const dx =
-            ball.x -
-            endX;
-
-
-        const dy =
-            ball.y -
-            endY;
-
-
-        const distance =
-            Math.hypot(
-                dx,
-                dy
-            );
-
-
-        if (
-            distance <
-            ball.r +
-            12
-        ) {
-
-            const nx =
-                dx /
-                (
-                    distance ||
-                    1
-                );
-
-
-            const ny =
-                dy /
-                (
-                    distance ||
-                    1
-                );
-
-
-            ball.vx +=
-                nx *
-                3;
-
-
-            ball.vy +=
-                ny *
-                3;
-
-        }
-
-    }
-
-}
-
-
-// ==================================================
-// 描画
-// ==================================================
-
-function draw() {
-
-    ctx.clearRect(
-        0,
-        0,
-        W,
-        H
-    );
-
-
-    ctx.fillStyle =
-        "#111827";
-
-
-    ctx.fillRect(
-        0,
-        0,
-        W,
-        H
-    );
-
-
-    // グリッド
-
-    ctx.strokeStyle =
-        "rgba(255,255,255,0.04)";
-
-
-    ctx.lineWidth =
-        1;
-
-
-    for (
-        let x = 0;
-        x < W;
-        x += 40
-    ) {
-
-        ctx.beginPath();
-
-
-        ctx.moveTo(
-            x,
-            70
-        );
-
-
-        ctx.lineTo(
-            x,
-            H
-        );
-
-
-        ctx.stroke();
-
-    }
-
-
-    for (
-        let y = 70;
-        y < H;
-        y += 40
-    ) {
-
-        ctx.beginPath();
-
-
-        ctx.moveTo(
-            0,
-            y
-        );
-
-
-        ctx.lineTo(
-            W,
-            y
-        );
-
-
-        ctx.stroke();
-
-    }
-
-
-    drawGoal();
-
-
-    for (
-        const obj of objects
-    ) {
-
-        drawObject(
-            obj
-        );
-
-    }
-
-
-    drawBall();
-
-}
-
-
-// ==================================================
-// ゴール描画
-// ==================================================
-
-function drawGoal() {
-
-    ctx.beginPath();
-
-
-    ctx.arc(
-
-        goal.x,
-        goal.y,
-        goal.r,
-        0,
-        Math.PI * 2
-
-    );
-
-
-    ctx.fillStyle =
-        "rgba(34,197,94,0.25)";
-
-
-    ctx.fill();
-
-
-    ctx.strokeStyle =
-        "#22c55e";
-
-
-    ctx.lineWidth =
-        5;
-
-
-    ctx.stroke();
-
-
-    ctx.fillStyle =
-        "#86efac";
-
-
-    ctx.font =
-        "bold 14px sans-serif";
-
-
-    ctx.textAlign =
-        "center";
-
-
-    ctx.fillText(
-
-        "GOAL",
-
-        goal.x,
-        goal.y + 5
-
-    );
-
-}
-
-
-// ==================================================
-// オブジェクト描画
-// ==================================================
-
-function drawObject(obj) {
-
-    ctx.save();
-
-
-    ctx.translate(
-        obj.x,
-        obj.y
-    );
-
-
-    if (
-        obj.type ===
-        "ramp"
-    ) {
-
-        ctx.rotate(
-            obj.angle
-        );
-
-
-        ctx.fillStyle =
-            "#3b82f6";
-
-
-        ctx.fillRect(
-
-            -obj.w / 2,
-            -obj.h / 2,
-
-            obj.w,
-            obj.h
-
-        );
-
-
-        ctx.fillStyle =
-            "rgba(255,255,255,0.3)";
-
-
-        ctx.fillRect(
-
-            -obj.w / 2,
-            -obj.h / 2,
-
-            obj.w,
-            5
-
-        );
-
-    }
-
-
-    if (
-        obj.type ===
-        "wall"
-    ) {
-
-        ctx.fillStyle =
-            "#6b7280";
-
-
-        ctx.fillRect(
-
-            -obj.w / 2,
-            -obj.h / 2,
-
-            obj.w,
-            obj.h
-
-        );
-
-
-        ctx.strokeStyle =
-            "#9ca3af";
-
-
-        ctx.strokeRect(
-
-            -obj.w / 2,
-            -obj.h / 2,
-
-            obj.w,
-            obj.h
-
-        );
-
-    }
-
-
-    if (
-        obj.type ===
-        "spring"
-    ) {
-
-        ctx.beginPath();
-
-
-        ctx.arc(
-
-            0,
-            0,
-            obj.r,
-            0,
-            Math.PI * 2
-
-        );
-
-
-        ctx.fillStyle =
-            "#eab308";
-
-
-        ctx.fill();
-
-
-        ctx.strokeStyle =
-            "#fef08a";
-
-
-        ctx.lineWidth =
-            5;
-
-
-        ctx.stroke();
-
-
-        ctx.fillStyle =
-            "#422006";
-
-
-        ctx.font =
-            "bold 24px sans-serif";
-
-
-        ctx.textAlign =
-            "center";
-
-
-        ctx.fillText(
-            "↯",
-            0,
-            8
-        );
-
-    }
-
-
-    if (
-        obj.type ===
-        "spinner"
-    ) {
-
-        ctx.strokeStyle =
-            "#a855f7";
-
-
-        ctx.lineWidth =
-            12;
-
-
-        ctx.lineCap =
-            "round";
-
-
-        for (
-            let i = 0;
-            i < 3;
-            i++
-        ) {
-
-            const angle =
-                obj.angle +
-                i *
-                Math.PI *
-                2 /
-                3;
-
-
-            ctx.beginPath();
-
-
-            ctx.moveTo(
+            canvas.width =
+                Math.round(W * dpr);
+
+            canvas.height =
+                Math.round(H * dpr);
+
+            /*
+             * Canvasの描画座標をCSS上の論理座標に合わせる
+             */
+            ctx.setTransform(
+                dpr,
+                0,
+                0,
+                dpr,
                 0,
                 0
             );
 
-
-            ctx.lineTo(
-
-                Math.cos(
-                    angle
-                ) *
-                obj.r,
-
-                Math.sin(
-                    angle
-                ) *
-                obj.r
-
-            );
-
-
-            ctx.stroke();
+            /*
+             * ゴールを画面右下へ配置
+             */
+            goal.x = W - 100;
+            goal.y = H - 100;
 
         }
 
 
-        ctx.beginPath();
+        /*
+         * window.resizeだけでなく、
+         * iframeや親要素のサイズ変更も検知する
+         */
+        const resizeObserver =
+            new ResizeObserver(() => {
+
+                resize();
+
+            });
+
+        resizeObserver.observe(canvas);
+
+        resize();
 
 
-        ctx.arc(
+        // =====================================================
+        // Tool Selection
+        // =====================================================
 
-            0,
-            0,
-            14,
-            0,
-            Math.PI * 2
+        document
+            .querySelectorAll(".tool")
+            .forEach(button => {
 
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        selectedTool =
+                            button.dataset.type;
+
+                        document
+                            .querySelectorAll(".tool")
+                            .forEach(btn => {
+
+                                btn.classList.remove(
+                                    "ring-2",
+                                    "ring-white"
+                                );
+
+                            });
+
+                        button.classList.add(
+                            "ring-2",
+                            "ring-white"
+                        );
+
+                    }
+                );
+
+            });
+
+
+        // =====================================================
+        // Pointer Position
+        // =====================================================
+
+        function getPointerPosition(e) {
+
+            const rect =
+                canvas.getBoundingClientRect();
+
+            return {
+
+                x:
+                    (e.clientX - rect.left)
+                    * (W / rect.width),
+
+                y:
+                    (e.clientY - rect.top)
+                    * (H / rect.height)
+
+            };
+
+        }
+
+
+        // =====================================================
+        // Object Placement
+        // =====================================================
+
+        canvas.addEventListener(
+            "pointerdown",
+            e => {
+
+                if (running) {
+                    return;
+                }
+
+                const {
+
+                    x,
+                    y
+
+                } =
+                    getPointerPosition(e);
+
+
+                /*
+                 * Eraser
+                 */
+                if (selectedTool === "eraser") {
+
+                    removeObject(x, y);
+
+                    return;
+
+                }
+
+
+                /*
+                 * Ramp
+                 */
+                if (selectedTool === "ramp") {
+
+                    objects.push({
+
+                        type: "ramp",
+
+                        x,
+                        y,
+
+                        w: 180,
+                        h: 25,
+
+                        angle: -0.35
+
+                    });
+
+                }
+
+
+                /*
+                 * Wall
+                 */
+                if (selectedTool === "wall") {
+
+                    objects.push({
+
+                        type: "wall",
+
+                        x,
+                        y,
+
+                        w: 150,
+                        h: 25,
+
+                        angle: 0
+
+                    });
+
+                }
+
+
+                /*
+                 * Spring
+                 */
+                if (selectedTool === "spring") {
+
+                    objects.push({
+
+                        type: "spring",
+
+                        x,
+                        y,
+
+                        r: 28
+
+                    });
+
+                }
+
+
+                /*
+                 * Spinner
+                 */
+                if (selectedTool === "spinner") {
+
+                    objects.push({
+
+                        type: "spinner",
+
+                        x,
+                        y,
+
+                        r: 60,
+
+                        angle: 0
+
+                    });
+
+                }
+
+            }
         );
 
 
-        ctx.fillStyle =
-            "#d8b4fe";
+        // =====================================================
+        // Remove Object
+        // =====================================================
+
+        function removeObject(x, y) {
+
+            objects =
+                objects.filter(obj => {
+
+                    if (
+                        obj.type === "spring" ||
+                        obj.type === "spinner"
+                    ) {
+
+                        return (
+                            Math.hypot(
+                                x - obj.x,
+                                y - obj.y
+                            )
+                            >
+                            obj.r + 20
+                        );
+
+                    }
 
 
-        ctx.fill();
+                    return !(
+                        x >
+                        obj.x - obj.w / 2 &&
 
-    }
+                        x <
+                        obj.x + obj.w / 2 &&
 
+                        y >
+                        obj.y - obj.h / 2 &&
 
-    ctx.restore();
+                        y <
+                        obj.y + obj.h / 2
+                    );
 
-}
+                });
 
-
-// ==================================================
-// ボール描画
-// ==================================================
-
-function drawBall() {
-
-    ctx.beginPath();
-
-
-    ctx.arc(
-
-        ball.x,
-        ball.y,
-        ball.r,
-        0,
-        Math.PI * 2
-
-    );
+        }
 
 
-    ctx.fillStyle =
-        "#f97316";
+        // =====================================================
+        // Start
+        // =====================================================
+
+        document
+            .getElementById("startBtn")
+            .addEventListener(
+                "click",
+                () => {
+
+                    if (running) {
+                        return;
+                    }
+
+                    running = true;
+                    won = false;
+
+                    ball.x = 110;
+                    ball.y = 180;
+
+                    ball.vx = 1;
+                    ball.vy = 0;
+
+                    document
+                        .getElementById("message")
+                        .textContent =
+                        "ボールが動き始めた！";
+
+                }
+            );
 
 
-    ctx.fill();
+        // =====================================================
+        // Reset
+        // =====================================================
+
+        document
+            .getElementById("resetBtn")
+            .addEventListener(
+                "click",
+                () => {
+
+                    running = false;
+                    won = false;
+
+                    ball.x = 110;
+                    ball.y = 180;
+
+                    ball.vx = 0;
+                    ball.vy = 0;
+
+                    document
+                        .getElementById("message")
+                        .textContent =
+                        "坂道や装置を配置して「スタート」";
+
+                }
+            );
 
 
-    ctx.strokeStyle =
-        "#fed7aa";
+        // =====================================================
+        // Physics Update
+        // =====================================================
+
+        function update() {
+
+            if (!running || won) {
+                return;
+            }
 
 
-    ctx.lineWidth =
-        3;
+            /*
+             * Gravity
+             */
+            ball.vy += gravity;
 
 
-    ctx.stroke();
+            /*
+             * Move
+             */
+            ball.x += ball.vx;
+            ball.y += ball.vy;
 
 
-    // ハイライト
-
-    ctx.beginPath();
-
-
-    ctx.arc(
-
-        ball.x - 5,
-        ball.y - 5,
-        4,
-        0,
-        Math.PI * 2
-
-    );
+            /*
+             * Friction
+             */
+            ball.vx *= friction;
 
 
-    ctx.fillStyle =
-        "white";
+            /*
+             * Left wall
+             */
+            if (ball.x - ball.r < 0) {
+
+                ball.x = ball.r;
+
+                ball.vx *= -0.7;
+
+            }
 
 
-    ctx.fill();
+            /*
+             * Right wall
+             */
+            if (ball.x + ball.r > W) {
 
-}
+                ball.x = W - ball.r;
 
+                ball.vx *= -0.7;
 
-// ==================================================
-// メインループ
-// ==================================================
-
-function loop() {
-
-    update();
-
-    draw();
-
-    requestAnimationFrame(
-        loop
-    );
-
-}
+            }
 
 
-// ==================================================
-// 初期化
-// ==================================================
+            /*
+             * Top wall
+             *
+             * UIがあるため70pxより上には行かせない
+             */
+            if (ball.y - ball.r < 70) {
 
-resize();
+                ball.y = 70 + ball.r;
 
-loadStage(1);
+                ball.vy *= -0.7;
 
-loop();
+            }
 
-</script>
+
+            /*
+             * Bottom wall
+             */
+            if (ball.y + ball.r > H) {
+
+                ball.y = H - ball.r;
+
+                ball.vy *= -0.65;
+
+                ball.vx *= 0.9;
+
+            }
+
+
+            /*
+             * Object Collision
+             */
+            for (const obj of objects) {
+
+                if (obj.type === "ramp") {
+
+                    collideRamp(obj);
+
+                }
+
+                if (obj.type === "wall") {
+
+                    collideWall(obj);
+
+                }
+
+                if (obj.type === "spring") {
+
+                    collideSpring(obj);
+
+                }
+
+                if (obj.type === "spinner") {
+
+                    collideSpinner(obj);
+
+                }
+
+            }
+
+
+            /*
+             * Goal
+             */
+            const distance =
+                Math.hypot(
+                    ball.x - goal.x,
+                    ball.y - goal.y
+                );
+
+
+            if (
+                distance
+                <
+                goal.r - ball.r / 2
+            ) {
+
+                won = true;
+
+                document
+                    .getElementById("message")
+                    .textContent =
+                    "🎉 ゴール成功！ボールは目的地に到達した！";
+
+            }
+
+        }
+
+
+        // =====================================================
+        // Ramp Collision
+        // =====================================================
+
+        function collideRamp(obj) {
+
+            const dx =
+                Math.cos(obj.angle);
+
+            const dy =
+                Math.sin(obj.angle);
+
+
+            const px =
+                ball.x - obj.x;
+
+            const py =
+                ball.y - obj.y;
+
+
+            const along =
+                px * dx +
+                py * dy;
+
+
+            const normal =
+                -px * dy +
+                py * dx;
+
+
+            if (
+
+                Math.abs(along)
+                <
+                obj.w / 2
+
+                &&
+
+                normal
+                >
+                -ball.r
+
+                &&
+
+                normal
+                <
+                ball.r + obj.h
+
+            ) {
+
+                const slopeY =
+                    obj.y
+                    +
+                    Math.sin(obj.angle)
+                    *
+                    along;
+
+
+                if (
+                    ball.y
+                    >
+                    slopeY - ball.r
+                ) {
+
+                    ball.y =
+                        slopeY - ball.r;
+
+
+                    ball.vy *= -0.15;
+
+
+                    ball.vx +=
+                        Math.sin(obj.angle)
+                        *
+                        0.25;
+
+
+                    ball.vy +=
+                        Math.cos(obj.angle)
+                        *
+                        0.1;
+
+                }
+
+            }
+
+        }
+
+
+        // =====================================================
+        // Wall Collision
+        // =====================================================
+
+        function collideWall(obj) {
+
+            const left =
+                obj.x - obj.w / 2;
+
+            const right =
+                obj.x + obj.w / 2;
+
+            const top =
+                obj.y - obj.h / 2;
+
+            const bottom =
+                obj.y + obj.h / 2;
+
+
+            const closestX =
+                Math.max(
+                    left,
+                    Math.min(ball.x, right)
+                );
+
+
+            const closestY =
+                Math.max(
+                    top,
+                    Math.min(ball.y, bottom)
+                );
+
+
+            const dx =
+                ball.x - closestX;
+
+            const dy =
+                ball.y - closestY;
+
+
+            const distance =
+                Math.hypot(dx, dy);
+
+
+            if (distance < ball.r) {
+
+                const nx =
+                    distance === 0
+                        ? 0
+                        : dx / distance;
+
+
+                const ny =
+                    distance === 0
+                        ? -1
+                        : dy / distance;
+
+
+                ball.x =
+                    closestX
+                    +
+                    nx * ball.r;
+
+
+                ball.y =
+                    closestY
+                    +
+                    ny * ball.r;
+
+
+                const dot =
+                    ball.vx * nx
+                    +
+                    ball.vy * ny;
+
+
+                ball.vx -=
+                    1.7
+                    *
+                    dot
+                    *
+                    nx;
+
+
+                ball.vy -=
+                    1.7
+                    *
+                    dot
+                    *
+                    ny;
+
+
+                ball.vx *= 0.8;
+                ball.vy *= 0.8;
+
+            }
+
+        }
+
+
+        // =====================================================
+        // Spring Collision
+        // =====================================================
+
+        function collideSpring(obj) {
+
+            const dx =
+                ball.x - obj.x;
+
+            const dy =
+                ball.y - obj.y;
+
+
+            const distance =
+                Math.hypot(dx, dy);
+
+
+            if (
+                distance
+                <
+                obj.r + ball.r
+            ) {
+
+                const nx =
+                    dx / (distance || 1);
+
+                const ny =
+                    dy / (distance || 1);
+
+
+                ball.x =
+                    obj.x
+                    +
+                    nx
+                    *
+                    (obj.r + ball.r);
+
+
+                ball.y =
+                    obj.y
+                    +
+                    ny
+                    *
+                    (obj.r + ball.r);
+
+
+                ball.vx =
+                    nx * 12;
+
+                ball.vy =
+                    ny * 12;
+
+            }
+
+        }
+
+
+        // =====================================================
+        // Spinner Collision
+        // =====================================================
+
+        function collideSpinner(obj) {
+
+            obj.angle += 0.04;
+
+
+            for (
+                let i = 0;
+                i < 3;
+                i++
+            ) {
+
+                const angle =
+                    obj.angle
+                    +
+                    i
+                    *
+                    Math.PI
+                    *
+                    2
+                    /
+                    3;
+
+
+                const endX =
+                    obj.x
+                    +
+                    Math.cos(angle)
+                    *
+                    obj.r;
+
+
+                const endY =
+                    obj.y
+                    +
+                    Math.sin(angle)
+                    *
+                    obj.r;
+
+
+                const dx =
+                    ball.x - endX;
+
+                const dy =
+                    ball.y - endY;
+
+
+                const distance =
+                    Math.hypot(dx, dy);
+
+
+                if (
+                    distance
+                    <
+                    ball.r + 12
+                ) {
+
+                    const nx =
+                        dx
+                        /
+                        (distance || 1);
+
+
+                    const ny =
+                        dy
+                        /
+                        (distance || 1);
+
+
+                    ball.vx +=
+                        nx * 3;
+
+                    ball.vy +=
+                        ny * 3;
+
+                }
+
+            }
+
+        }
+
+
+        // =====================================================
+        // Draw
+        // =====================================================
+
+        function draw() {
+
+            ctx.clearRect(
+                0,
+                0,
+                W,
+                H
+            );
+
+
+            /*
+             * Background
+             */
+            ctx.fillStyle =
+                "#111827";
+
+            ctx.fillRect(
+                0,
+                0,
+                W,
+                H
+            );
+
+
+            /*
+             * Grid
+             */
+            ctx.strokeStyle =
+                "rgba(255,255,255,0.04)";
+
+            ctx.lineWidth = 1;
+
+
+            for (
+                let x = 0;
+                x < W;
+                x += 40
+            ) {
+
+                ctx.beginPath();
+
+                ctx.moveTo(
+                    x,
+                    70
+                );
+
+                ctx.lineTo(
+                    x,
+                    H
+                );
+
+                ctx.stroke();
+
+            }
+
+
+            for (
+                let y = 70;
+                y < H;
+                y += 40
+            ) {
+
+                ctx.beginPath();
+
+                ctx.moveTo(
+                    0,
+                    y
+                );
+
+                ctx.lineTo(
+                    W,
+                    y
+                );
+
+                ctx.stroke();
+
+            }
+
+
+            drawGoal();
+
+
+            for (const obj of objects) {
+
+                drawObject(obj);
+
+            }
+
+
+            drawBall();
+
+        }
+
+
+        // =====================================================
+        // Goal
+        // =====================================================
+
+        function drawGoal() {
+
+            ctx.beginPath();
+
+
+            ctx.arc(
+
+                goal.x,
+                goal.y,
+                goal.r,
+                0,
+                Math.PI * 2
+
+            );
+
+
+            ctx.fillStyle =
+                "rgba(34,197,94,0.25)";
+
+            ctx.fill();
+
+
+            ctx.strokeStyle =
+                "#22c55e";
+
+            ctx.lineWidth = 5;
+
+            ctx.stroke();
+
+
+            ctx.fillStyle =
+                "#86efac";
+
+            ctx.font =
+                "bold 14px sans-serif";
+
+            ctx.textAlign =
+                "center";
+
+
+            ctx.fillText(
+
+                "GOAL",
+
+                goal.x,
+                goal.y + 5
+
+            );
+
+        }
+
+
+        // =====================================================
+        // Object Drawing
+        // =====================================================
+
+        function drawObject(obj) {
+
+            ctx.save();
+
+
+            ctx.translate(
+                obj.x,
+                obj.y
+            );
+
+
+            /*
+             * Ramp
+             */
+            if (
+                obj.type === "ramp"
+            ) {
+
+                ctx.rotate(
+                    obj.angle
+                );
+
+
+                ctx.fillStyle =
+                    "#3b82f6";
+
+
+                ctx.fillRect(
+
+                    -obj.w / 2,
+                    -obj.h / 2,
+                    obj.w,
+                    obj.h
+
+                );
+
+
+                ctx.fillStyle =
+                    "rgba(255,255,255,0.3)";
+
+
+                ctx.fillRect(
+
+                    -obj.w / 2,
+                    -obj.h / 2,
+                    obj.w,
+                    5
+
+                );
+
+            }
+
+
+            /*
+             * Wall
+             */
+            if (
+                obj.type === "wall"
+            ) {
+
+                ctx.fillStyle =
+                    "#6b7280";
+
+
+                ctx.fillRect(
+
+                    -obj.w / 2,
+                    -obj.h / 2,
+                    obj.w,
+                    obj.h
+
+                );
+
+
+                ctx.strokeStyle =
+                    "#9ca3af";
+
+
+                ctx.strokeRect(
+
+                    -obj.w / 2,
+                    -obj.h / 2,
+                    obj.w,
+                    obj.h
+
+                );
+
+            }
+
+
+            /*
+             * Spring
+             */
+            if (
+                obj.type === "spring"
+            ) {
+
+                ctx.beginPath();
+
+
+                ctx.arc(
+
+                    0,
+                    0,
+                    obj.r,
+                    0,
+                    Math.PI * 2
+
+                );
+
+
+                ctx.fillStyle =
+                    "#eab308";
+
+                ctx.fill();
+
+
+                ctx.strokeStyle =
+                    "#fef08a";
+
+                ctx.lineWidth = 5;
+
+                ctx.stroke();
+
+
+                ctx.fillStyle =
+                    "#422006";
+
+                ctx.font =
+                    "bold 24px sans-serif";
+
+                ctx.textAlign =
+                    "center";
+
+
+                ctx.fillText(
+                    "↯",
+                    0,
+                    8
+                );
+
+            }
+
+
+            /*
+             * Spinner
+             */
+            if (
+                obj.type === "spinner"
+            ) {
+
+                ctx.strokeStyle =
+                    "#a855f7";
+
+                ctx.lineWidth = 12;
+
+                ctx.lineCap =
+                    "round";
+
+
+                for (
+                    let i = 0;
+                    i < 3;
+                    i++
+                ) {
+
+                    const angle =
+                        obj.angle
+                        +
+                        i
+                        *
+                        Math.PI
+                        *
+                        2
+                        /
+                        3;
+
+
+                    ctx.beginPath();
+
+
+                    ctx.moveTo(
+                        0,
+                        0
+                    );
+
+
+                    ctx.lineTo(
+
+                        Math.cos(angle)
+                        *
+                        obj.r,
+
+                        Math.sin(angle)
+                        *
+                        obj.r
+
+                    );
+
+
+                    ctx.stroke();
+
+                }
+
+
+                ctx.beginPath();
+
+
+                ctx.arc(
+
+                    0,
+                    0,
+                    14,
+                    0,
+                    Math.PI * 2
+
+                );
+
+
+                ctx.fillStyle =
+                    "#d8b4fe";
+
+                ctx.fill();
+
+            }
+
+
+            ctx.restore();
+
+        }
+
+
+        // =====================================================
+        // Ball
+        // =====================================================
+
+        function drawBall() {
+
+            ctx.beginPath();
+
+
+            ctx.arc(
+
+                ball.x,
+                ball.y,
+                ball.r,
+                0,
+                Math.PI * 2
+
+            );
+
+
+            ctx.fillStyle =
+                "#f97316";
+
+            ctx.fill();
+
+
+            ctx.strokeStyle =
+                "#fed7aa";
+
+            ctx.lineWidth = 3;
+
+            ctx.stroke();
+
+
+            /*
+             * Highlight
+             */
+            ctx.beginPath();
+
+
+            ctx.arc(
+
+                ball.x - 5,
+                ball.y - 5,
+                4,
+                0,
+                Math.PI * 2
+
+            );
+
+
+            ctx.fillStyle =
+                "white";
+
+            ctx.fill();
+
+        }
+
+
+        // =====================================================
+        // Main Loop
+        // =====================================================
+
+        function loop() {
+
+            update();
+
+            draw();
+
+            requestAnimationFrame(
+                loop
+            );
+
+        }
+
+
+        loop();
+
+    </script>
 
 </body>
+
 </html>
