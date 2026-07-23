@@ -30,10 +30,8 @@
 
         canvas {
             display: block;
-
             width: 100%;
             height: 100%;
-
             touch-action: none;
             cursor: crosshair;
         }
@@ -46,6 +44,23 @@
         .tool:active {
             cursor: grabbing;
         }
+
+        .stage-btn {
+            min-width: 42px;
+        }
+
+        .stage-btn.locked {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .stage-btn.current {
+            box-shadow: 0 0 0 2px white;
+        }
+
+        .stage-btn.cleared {
+            background: #15803d;
+        }
     </style>
 </head>
 
@@ -55,15 +70,16 @@
     <div id="ui"
         class="fixed top-0 left-0 right-0 z-10 bg-gray-900/95 border-b border-gray-700">
 
-        <div class="flex items-center justify-between px-4 py-3">
+        <div class="flex items-center justify-between px-4 py-3 gap-3">
 
             <div>
                 <h1 class="font-bold text-lg">
                     ⚙️ Ball Factory Puzzle
                 </h1>
 
-                <p class="text-xs text-gray-400">
-                    物体を配置してボールをゴールへ導け
+                <p id="stageTitle"
+                    class="text-xs text-gray-400">
+                    ステージ 1
                 </p>
             </div>
 
@@ -83,6 +99,16 @@
 
         </div>
 
+        <!-- Stage Select -->
+        <div class="flex gap-2 px-4 pb-3 overflow-x-auto">
+
+            <div id="stageButtons"
+                class="flex gap-2">
+            </div>
+
+        </div>
+
+        <!-- Tools -->
         <div class="flex gap-2 px-4 pb-3 overflow-x-auto">
 
             <button
@@ -119,8 +145,10 @@
 
     </div>
 
+
     <!-- Canvas -->
     <canvas id="game"></canvas>
+
 
     <!-- Message -->
     <div id="message"
@@ -128,9 +156,9 @@
                bg-black/80 px-5 py-3 rounded-xl
                text-center font-bold pointer-events-none">
 
-        坂道や装置を配置して「スタート」
-
+        装置を配置して「スタート」
     </div>
+
 
     <script>
 
@@ -138,12 +166,14 @@
         // Canvas
         // =====================================================
 
-        const canvas = document.getElementById("game");
-        const ctx = canvas.getContext("2d");
+        const canvas =
+            document.getElementById("game");
+
+        const ctx =
+            canvas.getContext("2d");
 
         let W = 0;
         let H = 0;
-
         let dpr = 1;
 
 
@@ -154,9 +184,18 @@
         let running = false;
         let won = false;
 
+        let currentStage = 1;
+
         let selectedTool = "ramp";
 
         let objects = [];
+
+        let clearedStages =
+            JSON.parse(
+                localStorage.getItem(
+                    "ballFactoryClearedStages"
+                ) || "[]"
+            );
 
 
         // =====================================================
@@ -199,6 +238,369 @@
 
 
         // =====================================================
+        // Stage Data
+        // =====================================================
+
+        const stages = [
+
+            {
+                name: "はじめの一歩",
+                maxObjects: 5,
+
+                ball: {
+                    x: 110,
+                    y: 180
+                },
+
+                goal: {
+                    x: 100,
+                    y: 100
+                },
+
+                objects: [
+
+                    {
+                        type: "ramp",
+                        x: 350,
+                        y: 350,
+                        w: 180,
+                        h: 25,
+                        angle: -0.35
+                    }
+
+                ]
+
+            },
+
+            {
+                name: "壁を越えろ",
+                maxObjects: 4,
+
+                ball: {
+                    x: 100,
+                    y: 200
+                },
+
+                goal: {
+                    x: 800,
+                    y: 250
+                },
+
+                objects: [
+
+                    {
+                        type: "wall",
+                        x: 400,
+                        y: 400,
+                        w: 180,
+                        h: 25,
+                        angle: 0
+                    }
+
+                ]
+
+            },
+
+            {
+                name: "バネの力",
+                maxObjects: 4,
+
+                ball: {
+                    x: 120,
+                    y: 300
+                },
+
+                goal: {
+                    x: 850,
+                    y: 150
+                },
+
+                objects: [
+
+                    {
+                        type: "spring",
+                        x: 450,
+                        y: 450,
+                        r: 28
+                    }
+
+                ]
+
+            },
+
+            {
+                name: "回転ゲート",
+                maxObjects: 5,
+
+                ball: {
+                    x: 100,
+                    y: 150
+                },
+
+                goal: {
+                    x: 850,
+                    y: 500
+                },
+
+                objects: [
+
+                    {
+                        type: "spinner",
+                        x: 500,
+                        y: 350,
+                        r: 60,
+                        angle: 0
+                    }
+
+                ]
+
+            },
+
+            {
+                name: "空中ルート",
+                maxObjects: 6,
+
+                ball: {
+                    x: 100,
+                    y: 180
+                },
+
+                goal: {
+                    x: 850,
+                    y: 180
+                },
+
+                objects: [
+
+                    {
+                        type: "wall",
+                        x: 350,
+                        y: 400,
+                        w: 200,
+                        h: 25,
+                        angle: 0
+                    },
+
+                    {
+                        type: "wall",
+                        x: 650,
+                        y: 300,
+                        w: 200,
+                        h: 25,
+                        angle: 0
+                    }
+
+                ]
+
+            },
+
+            {
+                name: "バネ連鎖",
+                maxObjects: 6,
+
+                ball: {
+                    x: 100,
+                    y: 500
+                },
+
+                goal: {
+                    x: 850,
+                    y: 120
+                },
+
+                objects: [
+
+                    {
+                        type: "spring",
+                        x: 350,
+                        y: 400,
+                        r: 28
+                    },
+
+                    {
+                        type: "spring",
+                        x: 650,
+                        y: 250,
+                        r: 28
+                    }
+
+                ]
+
+            },
+
+            {
+                name: "回転する迷路",
+                maxObjects: 7,
+
+                ball: {
+                    x: 100,
+                    y: 200
+                },
+
+                goal: {
+                    x: 850,
+                    y: 500
+                },
+
+                objects: [
+
+                    {
+                        type: "spinner",
+                        x: 350,
+                        y: 300,
+                        r: 60,
+                        angle: 0
+                    },
+
+                    {
+                        type: "spinner",
+                        x: 650,
+                        y: 400,
+                        r: 60,
+                        angle: 0
+                    }
+
+                ]
+
+            },
+
+            {
+                name: "工場の迷路",
+                maxObjects: 8,
+
+                ball: {
+                    x: 100,
+                    y: 500
+                },
+
+                goal: {
+                    x: 850,
+                    y: 150
+                },
+
+                objects: [
+
+                    {
+                        type: "wall",
+                        x: 300,
+                        y: 350,
+                        w: 200,
+                        h: 25,
+                        angle: 0
+                    },
+
+                    {
+                        type: "wall",
+                        x: 600,
+                        y: 250,
+                        w: 200,
+                        h: 25,
+                        angle: 0
+                    },
+
+                    {
+                        type: "spring",
+                        x: 450,
+                        y: 500,
+                        r: 28
+                    }
+
+                ]
+
+            },
+
+            {
+                name: "最終試験",
+                maxObjects: 10,
+
+                ball: {
+                    x: 100,
+                    y: 500
+                },
+
+                goal: {
+                    x: 850,
+                    y: 120
+                },
+
+                objects: [
+
+                    {
+                        type: "wall",
+                        x: 300,
+                        y: 400,
+                        w: 200,
+                        h: 25,
+                        angle: 0
+                    },
+
+                    {
+                        type: "spinner",
+                        x: 500,
+                        y: 300,
+                        r: 60,
+                        angle: 0
+                    },
+
+                    {
+                        type: "spring",
+                        x: 700,
+                        y: 200,
+                        r: 28
+                    }
+
+                ]
+
+            },
+
+            {
+                name: "🏆 マスター工場",
+                maxObjects: 12,
+
+                ball: {
+                    x: 100,
+                    y: 500
+                },
+
+                goal: {
+                    x: 850,
+                    y: 100
+                },
+
+                objects: [
+
+                    {
+                        type: "spinner",
+                        x: 300,
+                        y: 350,
+                        r: 60,
+                        angle: 0
+                    },
+
+                    {
+                        type: "spring",
+                        x: 500,
+                        y: 400,
+                        r: 28
+                    },
+
+                    {
+                        type: "wall",
+                        x: 700,
+                        y: 250,
+                        w: 200,
+                        h: 25,
+                        angle: 0
+                    }
+
+                ]
+
+            }
+
+        ];
+
+
+        // =====================================================
         // Resize
         // =====================================================
 
@@ -225,9 +627,6 @@
             canvas.height =
                 Math.round(H * dpr);
 
-            /*
-             * Canvasの描画座標をCSS上の論理座標に合わせる
-             */
             ctx.setTransform(
                 dpr,
                 0,
@@ -237,19 +636,11 @@
                 0
             );
 
-            /*
-             * ゴールを画面右下へ配置
-             */
-            goal.x = W - 100;
-            goal.y = H - 100;
+            updateStagePositions();
 
         }
 
 
-        /*
-         * window.resizeだけでなく、
-         * iframeや親要素のサイズ変更も検知する
-         */
         const resizeObserver =
             new ResizeObserver(() => {
 
@@ -260,6 +651,179 @@
         resizeObserver.observe(canvas);
 
         resize();
+
+
+        // =====================================================
+        // Stage Position
+        // =====================================================
+
+        function updateStagePositions() {
+
+            const stage =
+                stages[currentStage - 1];
+
+            if (!stage) {
+                return;
+            }
+
+            /*
+             * ステージデータを画面サイズに合わせる
+             *
+             * 基準サイズは 1000 x 700
+             */
+            const scaleX =
+                W / 1000;
+
+            const scaleY =
+                Math.max(
+                    (H - 70) / 630,
+                    0.5
+                );
+
+            ball.x =
+                Math.min(
+                    stage.ball.x * scaleX,
+                    W - ball.r - 10
+                );
+
+            ball.y =
+                70 +
+                stage.ball.y * scaleY;
+
+            goal.x =
+                Math.min(
+                    stage.goal.x * scaleX,
+                    W - goal.r - 10
+                );
+
+            goal.y =
+                70 +
+                stage.goal.y * scaleY;
+
+        }
+
+
+        // =====================================================
+        // Stage Loading
+        // =====================================================
+
+        function loadStage(stageNumber) {
+
+            currentStage =
+                stageNumber;
+
+            running = false;
+            won = false;
+
+            const stage =
+                stages[currentStage - 1];
+
+            objects =
+                stage.objects.map(obj => ({
+                    ...obj
+                }));
+
+            updateStagePositions();
+
+            document
+                .getElementById("stageTitle")
+                .textContent =
+                `ステージ ${currentStage}: ${stage.name}`;
+
+            document
+                .getElementById("message")
+                .textContent =
+                `ステージ ${currentStage}「${stage.name}」 装置を配置してスタート`;
+
+            renderStageButtons();
+
+        }
+
+
+        // =====================================================
+        // Stage Buttons
+        // =====================================================
+
+        function renderStageButtons() {
+
+            const container =
+                document.getElementById(
+                    "stageButtons"
+                );
+
+            container.innerHTML = "";
+
+            for (
+                let i = 1;
+                i <= stages.length;
+                i++
+            ) {
+
+                const button =
+                    document.createElement(
+                        "button"
+                    );
+
+                const unlocked =
+                    i === 1 ||
+                    clearedStages.includes(i - 1);
+
+                const cleared =
+                    clearedStages.includes(i);
+
+                button.textContent =
+                    unlocked
+                        ? cleared
+                            ? `✓ ${i}`
+                            : i
+                        : `🔒 ${i}`;
+
+                button.className =
+                    "stage-btn px-3 py-2 rounded-lg font-bold " +
+                    "bg-gray-700 hover:bg-gray-600";
+
+                if (cleared) {
+
+                    button.classList.add(
+                        "cleared"
+                    );
+
+                }
+
+                if (i === currentStage) {
+
+                    button.classList.add(
+                        "current"
+                    );
+
+                }
+
+                if (!unlocked) {
+
+                    button.classList.add(
+                        "locked"
+                    );
+
+                    button.disabled = true;
+
+                }
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        loadStage(i);
+
+                    }
+                );
+
+                container.appendChild(
+                    button
+                );
+
+            }
+
+        }
 
 
         // =====================================================
@@ -335,6 +899,27 @@
                     return;
                 }
 
+                const stage =
+                    stages[currentStage - 1];
+
+                const placedObjects =
+                    objects.length -
+                    stage.objects.length;
+
+                if (
+                    selectedTool !== "eraser" &&
+                    placedObjects >= stage.maxObjects
+                ) {
+
+                    document
+                        .getElementById("message")
+                        .textContent =
+                        `このステージでは追加できる装置は${stage.maxObjects}個までです`;
+
+                    return;
+
+                }
+
                 const {
 
                     x,
@@ -344,22 +929,23 @@
                     getPointerPosition(e);
 
 
-                /*
-                 * Eraser
-                 */
-                if (selectedTool === "eraser") {
+                if (
+                    selectedTool === "eraser"
+                ) {
 
-                    removeObject(x, y);
+                    removeObject(
+                        x,
+                        y
+                    );
 
                     return;
 
                 }
 
 
-                /*
-                 * Ramp
-                 */
-                if (selectedTool === "ramp") {
+                if (
+                    selectedTool === "ramp"
+                ) {
 
                     objects.push({
 
@@ -378,10 +964,9 @@
                 }
 
 
-                /*
-                 * Wall
-                 */
-                if (selectedTool === "wall") {
+                if (
+                    selectedTool === "wall"
+                ) {
 
                     objects.push({
 
@@ -400,10 +985,9 @@
                 }
 
 
-                /*
-                 * Spring
-                 */
-                if (selectedTool === "spring") {
+                if (
+                    selectedTool === "spring"
+                ) {
 
                     objects.push({
 
@@ -419,10 +1003,9 @@
                 }
 
 
-                /*
-                 * Spinner
-                 */
-                if (selectedTool === "spinner") {
+                if (
+                    selectedTool === "spinner"
+                ) {
 
                     objects.push({
 
@@ -468,7 +1051,6 @@
 
                     }
 
-
                     return !(
                         x >
                         obj.x - obj.w / 2 &&
@@ -505,8 +1087,10 @@
                     running = true;
                     won = false;
 
-                    ball.x = 110;
-                    ball.y = 180;
+                    const stage =
+                        stages[currentStage - 1];
+
+                    updateStagePositions();
 
                     ball.vx = 1;
                     ball.vy = 0;
@@ -530,22 +1114,38 @@
                 "click",
                 () => {
 
-                    running = false;
-                    won = false;
-
-                    ball.x = 110;
-                    ball.y = 180;
-
-                    ball.vx = 0;
-                    ball.vy = 0;
-
-                    document
-                        .getElementById("message")
-                        .textContent =
-                        "坂道や装置を配置して「スタート」";
+                    loadStage(
+                        currentStage
+                    );
 
                 }
             );
+
+
+        // =====================================================
+        // Next Stage
+        // =====================================================
+
+        function nextStage() {
+
+            if (
+                currentStage >= stages.length
+            ) {
+
+                document
+                    .getElementById("message")
+                    .textContent =
+                    "🏆 全ステージクリア！";
+
+                return;
+
+            }
+
+            loadStage(
+                currentStage + 1
+            );
+
+        }
 
 
         // =====================================================
@@ -554,36 +1154,35 @@
 
         function update() {
 
-            if (!running || won) {
+            if (
+                !running ||
+                won
+            ) {
+
                 return;
+
             }
 
 
-            /*
-             * Gravity
-             */
             ball.vy += gravity;
 
 
-            /*
-             * Move
-             */
             ball.x += ball.vx;
             ball.y += ball.vy;
 
 
-            /*
-             * Friction
-             */
             ball.vx *= friction;
 
 
             /*
              * Left wall
              */
-            if (ball.x - ball.r < 0) {
+            if (
+                ball.x - ball.r < 0
+            ) {
 
-                ball.x = ball.r;
+                ball.x =
+                    ball.r;
 
                 ball.vx *= -0.7;
 
@@ -593,9 +1192,12 @@
             /*
              * Right wall
              */
-            if (ball.x + ball.r > W) {
+            if (
+                ball.x + ball.r > W
+            ) {
 
-                ball.x = W - ball.r;
+                ball.x =
+                    W - ball.r;
 
                 ball.vx *= -0.7;
 
@@ -604,12 +1206,13 @@
 
             /*
              * Top wall
-             *
-             * UIがあるため70pxより上には行かせない
              */
-            if (ball.y - ball.r < 70) {
+            if (
+                ball.y - ball.r < 70
+            ) {
 
-                ball.y = 70 + ball.r;
+                ball.y =
+                    70 + ball.r;
 
                 ball.vy *= -0.7;
 
@@ -619,9 +1222,12 @@
             /*
              * Bottom wall
              */
-            if (ball.y + ball.r > H) {
+            if (
+                ball.y + ball.r > H
+            ) {
 
-                ball.y = H - ball.r;
+                ball.y =
+                    H - ball.r;
 
                 ball.vy *= -0.65;
 
@@ -631,31 +1237,49 @@
 
 
             /*
-             * Object Collision
+             * Objects
              */
-            for (const obj of objects) {
+            for (
+                const obj of objects
+            ) {
 
-                if (obj.type === "ramp") {
+                if (
+                    obj.type === "ramp"
+                ) {
 
-                    collideRamp(obj);
-
-                }
-
-                if (obj.type === "wall") {
-
-                    collideWall(obj);
-
-                }
-
-                if (obj.type === "spring") {
-
-                    collideSpring(obj);
+                    collideRamp(
+                        obj
+                    );
 
                 }
 
-                if (obj.type === "spinner") {
+                if (
+                    obj.type === "wall"
+                ) {
 
-                    collideSpinner(obj);
+                    collideWall(
+                        obj
+                    );
+
+                }
+
+                if (
+                    obj.type === "spring"
+                ) {
+
+                    collideSpring(
+                        obj
+                    );
+
+                }
+
+                if (
+                    obj.type === "spinner"
+                ) {
+
+                    collideSpinner(
+                        obj
+                    );
 
                 }
 
@@ -673,17 +1297,78 @@
 
 
             if (
-                distance
-                <
+                distance <
                 goal.r - ball.r / 2
             ) {
 
-                won = true;
+                winStage();
+
+            }
+
+        }
+
+
+        // =====================================================
+        // Win Stage
+        // =====================================================
+
+        function winStage() {
+
+            won = true;
+            running = false;
+
+            if (
+                !clearedStages.includes(
+                    currentStage
+                )
+            ) {
+
+                clearedStages.push(
+                    currentStage
+                );
+
+                localStorage.setItem(
+                    "ballFactoryClearedStages",
+                    JSON.stringify(
+                        clearedStages
+                    )
+                );
+
+            }
+
+            renderStageButtons();
+
+            const message =
+                document.getElementById(
+                    "message"
+                );
+
+            if (
+                currentStage <
+                stages.length
+            ) {
+
+                message.innerHTML =
+                    `🎉 ステージ ${currentStage} クリア！<br>
+                    <button
+                        id="nextStageBtn"
+                        class="mt-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500">
+                        次のステージ →
+                    </button>`;
 
                 document
-                    .getElementById("message")
-                    .textContent =
-                    "🎉 ゴール成功！ボールは目的地に到達した！";
+                    .getElementById(
+                        "nextStageBtn"
+                    )
+                    .addEventListener(
+                        "click",
+                        nextStage
+                    );
+
+            } else {
+
+                message.textContent =
+                    "🏆 全ステージクリア！";
 
             }
 
@@ -702,23 +1387,19 @@
             const dy =
                 Math.sin(obj.angle);
 
-
             const px =
                 ball.x - obj.x;
 
             const py =
                 ball.y - obj.y;
 
-
             const along =
                 px * dx +
                 py * dy;
 
-
             const normal =
                 -px * dy +
                 py * dx;
-
 
             if (
 
@@ -743,32 +1424,33 @@
                 const slopeY =
                     obj.y
                     +
-                    Math.sin(obj.angle)
+                    Math.sin(
+                        obj.angle
+                    )
                     *
                     along;
 
-
                 if (
-                    ball.y
-                    >
+                    ball.y >
                     slopeY - ball.r
                 ) {
 
                     ball.y =
                         slopeY - ball.r;
 
-
                     ball.vy *= -0.15;
 
-
                     ball.vx +=
-                        Math.sin(obj.angle)
+                        Math.sin(
+                            obj.angle
+                        )
                         *
                         0.25;
 
-
                     ball.vy +=
-                        Math.cos(obj.angle)
+                        Math.cos(
+                            obj.angle
+                        )
                         *
                         0.1;
 
@@ -797,20 +1479,23 @@
             const bottom =
                 obj.y + obj.h / 2;
 
-
             const closestX =
                 Math.max(
                     left,
-                    Math.min(ball.x, right)
+                    Math.min(
+                        ball.x,
+                        right
+                    )
                 );
-
 
             const closestY =
                 Math.max(
                     top,
-                    Math.min(ball.y, bottom)
+                    Math.min(
+                        ball.y,
+                        bottom
+                    )
                 );
-
 
             const dx =
                 ball.x - closestX;
@@ -818,42 +1503,40 @@
             const dy =
                 ball.y - closestY;
 
-
             const distance =
-                Math.hypot(dx, dy);
+                Math.hypot(
+                    dx,
+                    dy
+                );
 
-
-            if (distance < ball.r) {
+            if (
+                distance < ball.r
+            ) {
 
                 const nx =
                     distance === 0
                         ? 0
                         : dx / distance;
 
-
                 const ny =
                     distance === 0
                         ? -1
                         : dy / distance;
-
 
                 ball.x =
                     closestX
                     +
                     nx * ball.r;
 
-
                 ball.y =
                     closestY
                     +
                     ny * ball.r;
 
-
                 const dot =
                     ball.vx * nx
                     +
                     ball.vy * ny;
-
 
                 ball.vx -=
                     1.7
@@ -862,14 +1545,12 @@
                     *
                     nx;
 
-
                 ball.vy -=
                     1.7
                     *
                     dot
                     *
                     ny;
-
 
                 ball.vx *= 0.8;
                 ball.vy *= 0.8;
@@ -891,39 +1572,50 @@
             const dy =
                 ball.y - obj.y;
 
-
             const distance =
-                Math.hypot(dx, dy);
-
+                Math.hypot(
+                    dx,
+                    dy
+                );
 
             if (
-                distance
-                <
+                distance <
                 obj.r + ball.r
             ) {
 
                 const nx =
-                    dx / (distance || 1);
+                    dx /
+                    (
+                        distance ||
+                        1
+                    );
 
                 const ny =
-                    dy / (distance || 1);
-
+                    dy /
+                    (
+                        distance ||
+                        1
+                    );
 
                 ball.x =
                     obj.x
                     +
                     nx
                     *
-                    (obj.r + ball.r);
-
+                    (
+                        obj.r +
+                        ball.r
+                    );
 
                 ball.y =
                     obj.y
                     +
                     ny
                     *
-                    (obj.r + ball.r);
-
+                    (
+                        obj.r +
+                        ball.r
+                    );
 
                 ball.vx =
                     nx * 12;
@@ -944,7 +1636,6 @@
 
             obj.angle += 0.04;
 
-
             for (
                 let i = 0;
                 i < 3;
@@ -962,22 +1653,23 @@
                     /
                     3;
 
-
                 const endX =
                     obj.x
                     +
-                    Math.cos(angle)
+                    Math.cos(
+                        angle
+                    )
                     *
                     obj.r;
-
 
                 const endY =
                     obj.y
                     +
-                    Math.sin(angle)
+                    Math.sin(
+                        angle
+                    )
                     *
                     obj.r;
-
 
                 const dx =
                     ball.x - endX;
@@ -985,28 +1677,30 @@
                 const dy =
                     ball.y - endY;
 
-
                 const distance =
-                    Math.hypot(dx, dy);
-
+                    Math.hypot(
+                        dx,
+                        dy
+                    );
 
                 if (
-                    distance
-                    <
+                    distance <
                     ball.r + 12
                 ) {
 
                     const nx =
-                        dx
-                        /
-                        (distance || 1);
-
+                        dx /
+                        (
+                            distance ||
+                            1
+                        );
 
                     const ny =
-                        dy
-                        /
-                        (distance || 1);
-
+                        dy /
+                        (
+                            distance ||
+                            1
+                        );
 
                     ball.vx +=
                         nx * 3;
@@ -1034,10 +1728,6 @@
                 H
             );
 
-
-            /*
-             * Background
-             */
             ctx.fillStyle =
                 "#111827";
 
@@ -1056,7 +1746,6 @@
                 "rgba(255,255,255,0.04)";
 
             ctx.lineWidth = 1;
-
 
             for (
                 let x = 0;
@@ -1079,7 +1768,6 @@
                 ctx.stroke();
 
             }
-
 
             for (
                 let y = 70;
@@ -1107,9 +1795,13 @@
             drawGoal();
 
 
-            for (const obj of objects) {
+            for (
+                const obj of objects
+            ) {
 
-                drawObject(obj);
+                drawObject(
+                    obj
+                );
 
             }
 
@@ -1127,7 +1819,6 @@
 
             ctx.beginPath();
 
-
             ctx.arc(
 
                 goal.x,
@@ -1138,12 +1829,10 @@
 
             );
 
-
             ctx.fillStyle =
                 "rgba(34,197,94,0.25)";
 
             ctx.fill();
-
 
             ctx.strokeStyle =
                 "#22c55e";
@@ -1151,7 +1840,6 @@
             ctx.lineWidth = 5;
 
             ctx.stroke();
-
 
             ctx.fillStyle =
                 "#86efac";
@@ -1161,7 +1849,6 @@
 
             ctx.textAlign =
                 "center";
-
 
             ctx.fillText(
 
@@ -1183,7 +1870,6 @@
 
             ctx.save();
 
-
             ctx.translate(
                 obj.x,
                 obj.y
@@ -1201,10 +1887,8 @@
                     obj.angle
                 );
 
-
                 ctx.fillStyle =
                     "#3b82f6";
-
 
                 ctx.fillRect(
 
@@ -1215,10 +1899,8 @@
 
                 );
 
-
                 ctx.fillStyle =
                     "rgba(255,255,255,0.3)";
-
 
                 ctx.fillRect(
 
@@ -1242,7 +1924,6 @@
                 ctx.fillStyle =
                     "#6b7280";
 
-
                 ctx.fillRect(
 
                     -obj.w / 2,
@@ -1252,10 +1933,8 @@
 
                 );
 
-
                 ctx.strokeStyle =
                     "#9ca3af";
-
 
                 ctx.strokeRect(
 
@@ -1278,7 +1957,6 @@
 
                 ctx.beginPath();
 
-
                 ctx.arc(
 
                     0,
@@ -1289,12 +1967,10 @@
 
                 );
 
-
                 ctx.fillStyle =
                     "#eab308";
 
                 ctx.fill();
-
 
                 ctx.strokeStyle =
                     "#fef08a";
@@ -1302,7 +1978,6 @@
                 ctx.lineWidth = 5;
 
                 ctx.stroke();
-
 
                 ctx.fillStyle =
                     "#422006";
@@ -1312,7 +1987,6 @@
 
                 ctx.textAlign =
                     "center";
-
 
                 ctx.fillText(
                     "↯",
@@ -1338,7 +2012,6 @@
                 ctx.lineCap =
                     "round";
 
-
                 for (
                     let i = 0;
                     i < 3;
@@ -1356,36 +2029,34 @@
                         /
                         3;
 
-
                     ctx.beginPath();
-
 
                     ctx.moveTo(
                         0,
                         0
                     );
 
-
                     ctx.lineTo(
 
-                        Math.cos(angle)
+                        Math.cos(
+                            angle
+                        )
                         *
                         obj.r,
 
-                        Math.sin(angle)
+                        Math.sin(
+                            angle
+                        )
                         *
                         obj.r
 
                     );
 
-
                     ctx.stroke();
 
                 }
 
-
                 ctx.beginPath();
-
 
                 ctx.arc(
 
@@ -1396,7 +2067,6 @@
                     Math.PI * 2
 
                 );
-
 
                 ctx.fillStyle =
                     "#d8b4fe";
@@ -1419,7 +2089,6 @@
 
             ctx.beginPath();
 
-
             ctx.arc(
 
                 ball.x,
@@ -1430,12 +2099,10 @@
 
             );
 
-
             ctx.fillStyle =
                 "#f97316";
 
             ctx.fill();
-
 
             ctx.strokeStyle =
                 "#fed7aa";
@@ -1445,11 +2112,7 @@
             ctx.stroke();
 
 
-            /*
-             * Highlight
-             */
             ctx.beginPath();
-
 
             ctx.arc(
 
@@ -1460,7 +2123,6 @@
                 Math.PI * 2
 
             );
-
 
             ctx.fillStyle =
                 "white";
@@ -1486,6 +2148,12 @@
 
         }
 
+
+        // =====================================================
+        // Start Game
+        // =====================================================
+
+        loadStage(1);
 
         loop();
 
